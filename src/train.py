@@ -1,24 +1,34 @@
-import torch
+from dataset import VAEDataModule
+from models import VAE2
 from pytorch_lightning import Trainer
-from models import VAE1
-from dataset import VAEDataset
-from networks import VAE
+from pytorch_lightning.callbacks.progress import TQDMProgressBar
+import torch
 
 params = {
-    'LR': 1e-3,
-    'weight_decay': 1e-5,
-    'kld_weight': 0.01,
+    'lr': 2e-4,
+    'a_reconst': 10,
+    'b1': 0.5,
+    'b2': 0.999,
 }
 
 
 def train_VAE1():
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    # TODO 1: Implement the training for VAE1
+    pass
 
-    model = VAE().to(device)
-    experiment = VAE1(model, params)
 
-    data = VAEDataset()  # TODO: Define params for the dataset
+def train_VAE2():
+    #device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = "cpu"
 
-    runner = Trainer()  # TODO: Define params for the trainer
+    VAE2_model = VAE2(params).to(device)
 
-    runner.fit(experiment, datamodule=data)
+    data_module = VAEDataModule("datasets/Flickr500")
+
+    trainer = Trainer(accelerator=device,
+                      devices=1 if device == "cuda" else None,
+                      max_epochs=3,
+                      callbacks=[TQDMProgressBar(refresh_rate=20)],
+                      log_every_n_steps=10)
+
+    trainer.fit(VAE2_model, data_module)

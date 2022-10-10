@@ -29,8 +29,8 @@ class VAE(nn.Module):
             ResBlock(hidden_channel_dim),
             ResBlock(hidden_channel_dim),
             ResBlock(hidden_channel_dim),
-            ConvBlock(64, 64, 4, 2, 1, activation),
-            ConvBlock(64, 64, 4, 2, 1, activation),
+            DeconvBlock(64, 64, 4, 2, 1, activation),
+            DeconvBlock(64, 64, 4, 2, 1, activation),
             ConvBlock(64, 3, 7, 1, 'same', activation)
         ]
         self.decoder = nn.Sequential(*model)
@@ -46,7 +46,7 @@ class VAE(nn.Module):
         # Assume that the latent distributions are Gaussian with means = latent and variances = 1
         eps = torch.randn_like(latent)
         x_reconst = self.decode(latent+eps)  # Reparameterization trick
-        return x_reconst, x, latent
+        return x_reconst, latent
 
 
 class ConvBlock(nn.Sequential):
@@ -107,10 +107,6 @@ class Mapping(nn.Module):
             ResBlock(512),
             ResBlock(512)]
         model_to_latent = [
-            ResBlock(512),
-            ResBlock(512),
-            ResBlock(512),
-            ResBlock(512),
             ResBlock(512),
             ResBlock(512),
             ConvBlock(512, 256, 3, 1, 1),
@@ -174,8 +170,23 @@ class Discriminator(nn.Module):
             SN(nn.Conv2d(3, 64, 4, 1, 1)),
             nn.LeakyReLU(0.2, inplace=True),
             SN(nn.Conv2d(64, 64, 4, 2, 1)),
+            nn.LeakyReLU(0.2, inplace=True),
+            SN(nn.Conv2d(64, 64, 4, 2, 1)),
+            nn.LeakyReLU(0.2, inplace=True),
+            SN(nn.Conv2d(64, 64, 4, 2, 1)),
+            nn.LeakyReLU(0.2, inplace=True),
+            SN(nn.Conv2d(64, 64, 4, 2, 1)),
+            nn.LeakyReLU(0.2, inplace=True),
+            SN(nn.Conv2d(64, 64, 4, 2, 1)),
+            nn.LeakyReLU(0.2, inplace=True),
+            SN(nn.Conv2d(64, 64, 4, 2, 1)),
+            nn.LeakyReLU(0.2, inplace=True),
+            SN(nn.Conv2d(64, 64, 4, 2, 1)),
+            nn.LeakyReLU(0.2, inplace=True),
+            SN(nn.Conv2d(64, 1, 3, 2, 1)),
+            nn.Sigmoid()
         ]
         self.model = nn.Sequential(*model)
 
     def forward(self, x):
-        return self.model(x)
+        return self.model(x).reshape(-1, 1)
