@@ -142,9 +142,12 @@ class VAE2(pl.LightningModule):
                 disc_pred, label_valid)
             loss_kl = torch.mean(torch.pow(latent, 2))/2
             loss_reconst = F.l1_loss(reconst_img, real_img)
-            vae_loss = loss_g_gan + loss_kl + \
-                self.params["a_reconst"] * loss_reconst
+            vae_loss = loss_kl + \
+                self.params["a_reconst"] * loss_reconst + loss_g_gan
             self.log("vae2_loss", vae_loss, prog_bar=True)
+            self.log("loss_g_gan", loss_g_gan, prog_bar=True)
+            self.log("loss_kl", loss_kl, prog_bar=True)
+            self.log("loss_reconst", loss_reconst, prog_bar=True)
             return vae_loss
 
         # train discriminator

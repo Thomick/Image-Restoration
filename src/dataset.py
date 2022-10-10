@@ -1,15 +1,27 @@
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
+from torchvision import transforms, io, datasets
 from pathlib import Path
-from PIL import Image
 import torch
 import numpy as np
+from PIL import Image
+
+
+data_transform = transforms.Compose([
+    transforms.RandomCrop(256, pad_if_needed=True),
+    transforms.RandomHorizontalFlip(),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                         std=[0.229, 0.224, 0.225])
+    # TODO : Check if this is the right normalization
+])
 
 
 class MyDataset(Dataset):
     def __init__(self,
                  data_dir: str,
                  split: str):
+        # TODO :  Add a transform parameter
         self.data_dir = Path(data_dir)
         imgs = sorted(
             [f for f in self.data_dir.iterdir() if f.suffix == '.png'])
@@ -21,11 +33,8 @@ class MyDataset(Dataset):
         return len(self.imgs)
 
     def __getitem__(self, idx):
-        img = Image.open(self.imgs[idx])
-        img = img.crop((0, 0, 256, 256))
-        img = np.array(img, copy=True)
-        img = np.transpose(img, (2, 0, 1))
-        img = torch.from_numpy(img).float()
+        img = Image.open(self.imgs[idx]).convert('RGB')
+        img = data_transform(img)
 
         return img, 0.0
 
@@ -46,15 +55,10 @@ class VAEDataModule(LightningDataModule):
 
     def setup(self, stage=None) -> None:
 
-        self.train_dataset = MyDataset(
-            self.data_dir,
-            split='train',
-        )
+        self.train_dataset = MyDataset(self.data_dir, split="train")
 
-        self.val_dataset = MyDataset(
-            self.data_dir,
-            split='test',
-        )
+        # TODO: Separate training and validation set
+        self.val_dataset = MyDataset(self.data_dir, split="val")
 
     def train_dataloader(self):
         return DataLoader(

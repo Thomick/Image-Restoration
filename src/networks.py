@@ -109,6 +109,10 @@ class Mapping(nn.Module):
         model_to_latent = [
             ResBlock(512),
             ResBlock(512),
+            ResBlock(512),
+            ResBlock(512),
+            ResBlock(512),
+            ResBlock(512),
             ConvBlock(512, 256, 3, 1, 1),
             ConvBlock(256, 128, 3, 1, 1),
             ConvBlock(128, 64, 3, 1, 1)]
