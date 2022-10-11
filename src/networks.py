@@ -31,7 +31,7 @@ class VAE(nn.Module):
             ResBlock(hidden_channel_dim),
             DeconvBlock(64, 64, 4, 2, 1, activation),
             DeconvBlock(64, 64, 4, 2, 1, activation),
-            ConvBlock(64, 3, 7, 1, 'same', activation)
+            ConvBlock(64, 3, 7, 1, 'same', activation=nn.Sigmoid())
         ]
         self.decoder = nn.Sequential(*model)
 
@@ -173,22 +173,17 @@ class Discriminator(nn.Module):
         model = [
             SN(nn.Conv2d(3, 64, 4, 1, 1)),
             nn.LeakyReLU(0.2, inplace=True),
+            nn.AvgPool2d(3, stride=2, padding=[1, 1], count_include_pad=False),
             SN(nn.Conv2d(64, 64, 4, 2, 1)),
             nn.LeakyReLU(0.2, inplace=True),
+            nn.AvgPool2d(3, stride=2, padding=[1, 1], count_include_pad=False),
             SN(nn.Conv2d(64, 64, 4, 2, 1)),
             nn.LeakyReLU(0.2, inplace=True),
+            nn.AvgPool2d(3, stride=2, padding=[1, 1], count_include_pad=False),
             SN(nn.Conv2d(64, 64, 4, 2, 1)),
             nn.LeakyReLU(0.2, inplace=True),
-            SN(nn.Conv2d(64, 64, 4, 2, 1)),
-            nn.LeakyReLU(0.2, inplace=True),
-            SN(nn.Conv2d(64, 64, 4, 2, 1)),
-            nn.LeakyReLU(0.2, inplace=True),
-            SN(nn.Conv2d(64, 64, 4, 2, 1)),
-            nn.LeakyReLU(0.2, inplace=True),
-            SN(nn.Conv2d(64, 64, 4, 2, 1)),
-            nn.LeakyReLU(0.2, inplace=True),
+            nn.AvgPool2d(3, stride=2, padding=[1, 1], count_include_pad=False),
             SN(nn.Conv2d(64, 1, 3, 2, 1)),
-            nn.Sigmoid()
         ]
         self.model = nn.Sequential(*model)
 

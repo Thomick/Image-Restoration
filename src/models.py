@@ -116,11 +116,13 @@ class VAE2(pl.LightningModule):
         self.vae = VAE()
         self.discriminator = Discriminator()
         self.params = params
+        self.curr_device = None
 
     def forward(self, x):
         return self.vae(x)
 
     def training_step(self, batch, batch_idx, optimizer_idx):
+        self.curr_device = batch[0].device
         opt = self.optimizers()[0]
 
         real_img, _ = batch
@@ -180,5 +182,29 @@ class VAE2(pl.LightningModule):
         return [opt_vae, opt_d], []
 
     def validation_step(self, batch, batch_idx):
+        self.curr_device = batch[0].device
         # TODO: Implement the validation step for VAE2
         pass
+
+    def on_validation_end(self) -> None:
+        self.sample_images()
+
+    def sample_images(self):
+        # Get sample reconstruction image
+        test_input, _ = next(iter(self.trainer.datamodule.test_dataloader()))
+        test_input = test_input.to(self.curr_device)
+
+#         test_input, test_label = batch
+        recons, _ = self.vae(test_input)
+        vutils.save_image(recons.data,
+                          os.path.join(self.logger.log_dir,
+                                       "Reconstructions",
+                                       f"recons_{self.logger.name}_Epoch_{self.current_epoch}.png"),
+                          normalize=True,
+                          nrow=12)
+        vutils.save_image(test_input.data,
+                          os.path.join(self.logger.log_dir,
+                                       "Input",
+                                       f"input_{self.logger.name}_Epoch_{self.current_epoch}.png"),
+                          normalize=True,
+                          nrow=12)
