@@ -1,9 +1,7 @@
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
-from torchvision import transforms, io, datasets
+from torchvision import transforms
 from pathlib import Path
-import torch
-import numpy as np
 from PIL import Image
 
 
@@ -13,8 +11,11 @@ data_transform = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406],
                          std=[0.229, 0.224, 0.225])
-    # TODO : Check if this is the right normalization
+    # TODO : Check which normalization should be used
 ])
+
+# Simple dataset class for loading images from a folder without labels
+# TODO: Rename the class to something more appropriate
 
 
 class MyDataset(Dataset):
@@ -39,6 +40,8 @@ class MyDataset(Dataset):
         return img, 0.0
 
 
+# DataModule for the VAE1 model
+# TODO: Rename the class to something more appropriate
 class VAEDataModule(LightningDataModule):
 
     def __init__(
@@ -57,7 +60,6 @@ class VAEDataModule(LightningDataModule):
 
         self.train_dataset = MyDataset(self.data_dir, split="train")
 
-        # TODO: Separate training and validation set
         self.val_dataset = MyDataset(self.data_dir, split="val")
 
     def train_dataloader(self):

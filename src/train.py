@@ -1,6 +1,5 @@
-from logging.config import valid_ident
 from dataset import VAEDataModule
-from models import VAE2
+from models import VAE2, VAE1
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.progress import TQDMProgressBar
 import torch
@@ -34,6 +33,7 @@ def train_VAE1():
 
 
 def train_VAE2():
+    # TODO : Allow to resume training
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     VAE2_model = VAE2(params).to(device)
