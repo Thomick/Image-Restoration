@@ -1,3 +1,5 @@
+# Network modules used to build the models
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -7,7 +9,7 @@ class VAE(nn.Module):
     def __init__(self):
         super(VAE, self).__init__()
 
-        # TODO : Remove hard-coded values:hidden_dim, latent_dim, activation
+        # TODO : Remove hard-coded values:hidden_dim, activation
         activation = nn.ReLU()
         hidden_channel_dim = 64
 
@@ -184,6 +186,7 @@ class Discriminator(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
             nn.AvgPool2d(3, stride=2, padding=[1, 1], count_include_pad=False),
             SN(nn.Conv2d(64, 1, 3, 2, 1)),
+            nn.Sigmoid()
         ]
         self.model = nn.Sequential(*model)
 

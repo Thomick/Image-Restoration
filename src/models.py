@@ -1,12 +1,13 @@
+# Actual models assembled using the network modules defined in networks.py
+
 import os
 import pytorch_lightning as pl
 import torchvision.utils as vutils
-import torch.optim as optim
-from networks import *
-
-#
+import torch
+from networks import *  # TODO: Import only the required classes
 
 
+# VAE with interwined latent space for real and synthetic images
 class VAE1(pl.LightningModule):
     def __init__(self, params):
         super().__init__()
@@ -89,7 +90,7 @@ class VAE1(pl.LightningModule):
         return [opt_vae, opt_d, opt_d_latent], []
 
     def validation_step(self, batch, batch_idx):
-        # TODO: Implement the validation step for VAE2
+        # TODO: Implement the validation step for VAE1
         pass
 
 
@@ -114,6 +115,7 @@ class VAE2(pl.LightningModule):
         # train VAE2
         if optimizer_idx == 0:
 
+            # TODO : Log image in tensorboard
             # log sampled images
             #sample_imgs = self.generated_imgs[:6]
             #grid = torchvision.utils.make_grid(sample_imgs)
@@ -135,7 +137,7 @@ class VAE2(pl.LightningModule):
             self.log("loss_reconst", loss_reconst, prog_bar=True)
             return vae_loss
 
-        # train discriminator
+        # train discriminator to distinguish real and reconstructed images (1=real, 0=recoonstructed)
         if optimizer_idx == 1:
 
             label_valid = torch.ones(real_img.size(0), 1)
@@ -177,7 +179,7 @@ class VAE2(pl.LightningModule):
         test_input, _ = next(iter(self.trainer.datamodule.test_dataloader()))
         test_input = test_input.to(self.curr_device)
 
-#         test_input, test_label = batch
+        #test_input, test_label = batch
         recons, _ = self.vae(test_input)
         vutils.save_image(recons.data,
                           os.path.join(self.logger.log_dir,
