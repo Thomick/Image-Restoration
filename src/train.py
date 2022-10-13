@@ -38,14 +38,14 @@ def train_VAE2():
 
     VAE2_model = VAE2(params).to(device)
 
-    data_module = VAEDataModule("datasets/Flickr500")
+    data_module = VAEDataModule("datasets/Flickr500", batch_size=32)
 
     trainer = Trainer(accelerator=device,
                       devices=1 if device == "cuda" else None,
-                      max_epochs=100,
+                      max_epochs=1000,
                       callbacks=[TQDMProgressBar(refresh_rate=1)],
                       log_every_n_steps=8,
-                      check_val_every_n_epoch=100)
+                      check_val_every_n_epoch=20)
 
     Path(f"{trainer.log_dir}/Input").mkdir(exist_ok=True, parents=True)
     Path(f"{trainer.log_dir}/Reconstructions").mkdir(exist_ok=True, parents=True)

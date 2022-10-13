@@ -31,7 +31,7 @@ class VAE(nn.Module):
             ResBlock(hidden_channel_dim),
             DeconvBlock(64, 64, 4, 2, 1, activation),
             DeconvBlock(64, 64, 4, 2, 1, activation),
-            ConvBlock(64, 3, 7, 1, 'same', activation=nn.Sigmoid())
+            nn.Conv2d(64, 3, 7, 1, 'same')
         ]
         self.decoder = nn.Sequential(*model)
 

@@ -22,48 +22,41 @@ class VAE1(pl.LightningModule):
         opt = self.optimizers()[0]
 
         # TODO: Use the usual format of batch (data,label)
-        real_img, synthetic_img = batch
+        input_img, labels = batch  # 1=real noise, 0=generated noise
+        reconst_img, latent = self(input_img)
 
         # train VAE1
         if optimizer_idx == 0:
+            label = label.type_as(reconst_img)
+            label_valid = torch.ones(input_img.size(0), 1)
+            label_valid = label_valid.type_as(input_img)
 
-            # Loss for real images
-            reconst_img, latent = self(real_img)
-            label_valid = torch.ones(real_img.size(0), 1)
-            label_valid = label_valid.type_as(real_img)
-
-            loss_vae_gan = F.mse_loss(
-                self.discriminator(reconst_img), label_valid)
+            disc_pred = self.discriminator(reconst_img)
+            loss_g_gan = F.mse_loss(
+                disc_pred, label_valid)
             loss_kl = torch.mean(torch.pow(latent, 2))/2
-            loss_reconst = F.l1_loss(reconst_img, real_img)
-            vae_loss_real = loss_vae_gan + loss_kl + \
-                self.params["a_reconst"] * loss_reconst
-            self.log("vae2_loss_real", vae_loss_real, prog_bar=True)
-
-            # Loss for synthetic images
-            reconst_img, latent = self(synthetic_img)
-            label_valid = torch.ones(real_img.size(0), 1)
-            label_valid = label_valid.type_as(real_img)
-
-            loss_vae_gan = F.mse_loss(
-                self.discriminator(reconst_img), label_valid)
-            loss_kl = torch.mean(torch.pow(latent, 2))/2
-            loss_reconst = F.l1_loss(reconst_img, real_img)
-            vae_loss_synth = loss_vae_gan + loss_kl + \
-                self.params["a_reconst"] * loss_reconst
-            self.log("vae2_loss_synth", vae_loss_synth, prog_bar=True)
-            return (vae_loss_real + vae_loss_synth)/2
+            loss_reconst = F.l1_loss(reconst_img, input_img)
+            loss_latent_gan = F.mse_loss(
+                self.discriminator_latent(latent), 1-label)
+            vae_loss = loss_kl + \
+                self.params["a_reconst"] * loss_reconst + loss_g_gan + \
+                loss_latent_gan  # TODO:Verify parameters of the loss function
+            self.log("vae2_loss", vae_loss, prog_bar=True)
+            self.log("loss_g_gan", loss_g_gan, prog_bar=True)
+            self.log("loss_kl", loss_kl, prog_bar=True)
+            self.log("loss_reconst", loss_reconst, prog_bar=True)
+            return vae_loss
 
         # train discriminator
         if optimizer_idx == 1:
 
-            label_valid = torch.ones(real_img.size(0), 1)
-            label_valid = label_valid.type_as(real_img)
+            label_valid = torch.ones(input_img.size(0), 1)
+            label_valid = label_valid.type_as(input_img)
 
-            real_loss = F.mse_loss(self.discriminator(real_img), label_valid)
+            real_loss = F.mse_loss(self.discriminator(input_img), label_valid)
 
-            label_fake = torch.zeros(real_img.size(0), 1)
-            label_fake = label_fake.type_as(real_img)
+            label_fake = torch.zeros(input_img.size(0), 1)
+            label_fake = label_fake.type_as(input_img)
 
             synth_loss = F.mse_loss(
                 self.discriminator(reconst_img), label_fake)
@@ -74,21 +67,11 @@ class VAE1(pl.LightningModule):
 
         # train discriminator for the latent space
         if optimizer_idx == 2:
-            latent_real = self.vae.encode(real_img)
-            latent_synth = self.vae.encode(reconst_img)
+            label = label.type_as(latent)
 
-            label_valid = torch.ones(latent_real.size(0), 1)
-            label_valid = label_valid.type_as(latent_real)
+            d_latent_loss = F.mse_loss(
+                self.discriminator_latent(latent), label)
 
-            label_fake = torch.zeros(latent_synth.size(0), 1)
-            label_fake = label_fake.type_as(latent_synth)
-
-            real_loss = F.mse_loss(
-                self.discriminator_latent(latent_real), label_valid)
-            synth_loss = F.mse_loss(
-                self.discriminator_latent(latent_synth), label_fake)
-
-            d_latent_loss = (real_loss + synth_loss) / 2
             self.log("d_latent_loss", d_latent_loss, prog_bar=True)
             return d_latent_loss
 
@@ -200,11 +183,9 @@ class VAE2(pl.LightningModule):
                           os.path.join(self.logger.log_dir,
                                        "Reconstructions",
                                        f"recons_{self.logger.name}_Epoch_{self.current_epoch}.png"),
-                          normalize=True,
-                          nrow=12)
+                          nrow=8)
         vutils.save_image(test_input.data,
                           os.path.join(self.logger.log_dir,
                                        "Input",
                                        f"input_{self.logger.name}_Epoch_{self.current_epoch}.png"),
-                          normalize=True,
-                          nrow=12)
+                          nrow=8)

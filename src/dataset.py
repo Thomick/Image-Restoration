@@ -9,11 +9,7 @@ from PIL import Image
 
 data_transform = transforms.Compose([
     transforms.RandomCrop(256, pad_if_needed=True),
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                         std=[0.229, 0.224, 0.225])
-    # TODO : Check if this is the right normalization
+    transforms.RandomHorizontalFlip(0.5),
 ])
 
 
@@ -24,7 +20,7 @@ class MyDataset(Dataset):
         # TODO :  Add a transform parameter
         self.data_dir = Path(data_dir)
         imgs = sorted(
-            [f for f in self.data_dir.iterdir() if f.suffix == '.png'])
+            [str(f) for f in self.data_dir.iterdir() if f.suffix == '.png'])
 
         self.imgs = imgs[:int(
             len(imgs) * 0.75)] if split == "train" else imgs[int(len(imgs) * 0.75):]
@@ -33,7 +29,36 @@ class MyDataset(Dataset):
         return len(self.imgs)
 
     def __getitem__(self, idx):
-        img = Image.open(self.imgs[idx]).convert('RGB')
+        img = 2*io.read_image(self.imgs[idx])/255-1
+        img = data_transform(img)
+
+        return img, 0.0
+
+
+class PhaseADataset(Dataset):
+    def __init__(self,
+                 data_dir: str,
+                 split: str):
+        # TODO :  Add a transform parameter
+        self.real_data_dir = Path(data_dir+"/noisy")
+        real_imgs = sorted(
+            [str(f) for f in self.real_data_dir.iterdir() if f.suffix == '.png'])
+
+        self.real_imgs = real_imgs[:int(
+            len(real_imgs) * 0.75)] if split == "train" else real_imgs[int(len(real_imgs) * 0.75):]
+
+        self.data_for_synthesis_dir = Path(data_dir+"/non_noisy")
+        imgs_for_synthesis = sorted(
+            [str(f) for f in self.data_for_synthesis_dir.iterdir() if f.suffix == '.png'])
+        self.imgs_for_synthesis = imgs_for_synthesis[:int(len(
+            imgs_for_synthesis) * 0.75)] if split == "train" else imgs_for_synthesis[int(len(imgs_for_synthesis) * 0.75):]
+
+    def __len__(self):
+        return len(self.imgs)
+
+    def __getitem__(self, idx):
+        # TODO : Add images with synthetic noise
+        img = 2*io.read_image(self.real_imgs[idx])/255-1
         img = data_transform(img)
 
         return img, 0.0
