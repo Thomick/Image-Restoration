@@ -12,23 +12,25 @@ class VAE1(pl.LightningModule):
     def __init__(self, params):
         super().__init__()
         self.vae = VAE()
-        self.discriminator = Discriminator()
-        self.discriminator_latent = Discriminator()
+        self.discriminator = Discriminator(4)
+        self.discriminator_latent = Discriminator(3, in_channels=64)
         self.params = params
+        self.curr_device = None
 
     def forward(self, x):
         return self.vae(x)
 
     def training_step(self, batch, batch_idx, optimizer_idx):
+        self.curr_device = batch[0].device
         opt = self.optimizers()[0]
 
         # TODO: Use the usual format of batch (data,label)
-        input_img, labels = batch  # 1=real noise, 0=generated noise
+        input_img, label = batch  # 1=real noise, 0=generated noise
         reconst_img, latent = self(input_img)
+        label = label.type_as(input_img).reshape(-1, 1)
 
         # train VAE1
         if optimizer_idx == 0:
-            label = label.type_as(reconst_img)
             label_valid = torch.ones(input_img.size(0), 1)
             label_valid = label_valid.type_as(input_img)
 
@@ -68,7 +70,6 @@ class VAE1(pl.LightningModule):
 
         # train discriminator for the latent space
         if optimizer_idx == 2:
-            label = label.type_as(latent)
 
             d_latent_loss = F.mse_loss(
                 self.discriminator_latent(latent), label)
@@ -93,6 +94,27 @@ class VAE1(pl.LightningModule):
         # TODO: Implement the validation step for VAE1
         pass
 
+    def on_validation_end(self) -> None:
+        self.sample_images()
+
+    def sample_images(self):
+        # Get sample reconstruction image
+        test_input, _ = next(iter(self.trainer.datamodule.test_dataloader()))
+        test_input = test_input.to(self.curr_device)
+
+        #test_input, test_label = batch
+        recons, _ = self.vae(test_input)
+        vutils.save_image(recons.data,
+                          os.path.join(self.logger.log_dir,
+                                       "Reconstructions",
+                                       f"recons_{self.logger.name}_Epoch_{self.current_epoch}.png"),
+                          nrow=8)
+        vutils.save_image(test_input.data,
+                          os.path.join(self.logger.log_dir,
+                                       "Input",
+                                       f"input_{self.logger.name}_Epoch_{self.current_epoch}.png"),
+                          nrow=8)
+
 
 class VAE2(pl.LightningModule):
     def __init__(self, params):
@@ -107,7 +129,6 @@ class VAE2(pl.LightningModule):
 
     def training_step(self, batch, batch_idx, optimizer_idx):
         self.curr_device = batch[0].device
-        opt = self.optimizers()[0]
 
         real_img, _ = batch
         reconst_img, latent = self(real_img)

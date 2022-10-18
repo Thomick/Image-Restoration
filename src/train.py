@@ -19,15 +19,16 @@ def train_VAE1():
 
     VAE1_model = VAE1(params).to(device)
 
-    raise Exception("VAE1DataModule not implemented")
-    # TODO: Implement VAE1DataModule
-    data_module = None
+    data_module = VAEDataModule("datasets", batch_size=32, phase="A")
 
     trainer = Trainer(accelerator=device,
                       devices=1 if device == "cuda" else None,
-                      max_epochs=3,
-                      callbacks=[TQDMProgressBar(refresh_rate=20)],
+                      max_epochs=1000,
+                      callbacks=[TQDMProgressBar(refresh_rate=1)],
                       log_every_n_steps=10)
+
+    Path(f"{trainer.log_dir}/Input").mkdir(exist_ok=True, parents=True)
+    Path(f"{trainer.log_dir}/Reconstructions").mkdir(exist_ok=True, parents=True)
 
     trainer.fit(VAE1_model, data_module)
 
@@ -38,7 +39,7 @@ def train_VAE2():
 
     VAE2_model = VAE2(params).to(device)
 
-    data_module = VAEDataModule("datasets/Flickr500", batch_size=32)
+    data_module = VAEDataModule("datasets/Flickr500", batch_size=32, phase="B")
 
     trainer = Trainer(accelerator=device,
                       devices=1 if device == "cuda" else None,
