@@ -99,7 +99,8 @@ class PhaseADataset(Dataset):
     def __getitem__(self, idx):
         # TODO : Add images with synthetic noise
         img = io.read_image(self.imgs[idx][0]).float()
-        img = random_degradation(img)
+        if self.imgs[idx][1] == 0.:
+            img = random_degradation(img)
         img = data_transform(img)
 
         return 2*img/255-1, self.imgs[idx][1]

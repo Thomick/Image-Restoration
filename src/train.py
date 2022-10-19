@@ -17,7 +17,7 @@ params = {
 def train_VAE1():
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    VAE1_model = VAE1(params).to(device)
+    VAE1_model = VAE1(params, device).to(device)
 
     data_module = VAEDataModule("datasets", batch_size=32, phase="A")
 
@@ -25,7 +25,8 @@ def train_VAE1():
                       devices=1 if device == "cuda" else None,
                       max_epochs=1000,
                       callbacks=[TQDMProgressBar(refresh_rate=1)],
-                      log_every_n_steps=10)
+                      log_every_n_steps=10,
+                      check_val_every_n_epoch=50)
 
     Path(f"{trainer.log_dir}/Input").mkdir(exist_ok=True, parents=True)
     Path(f"{trainer.log_dir}/Reconstructions").mkdir(exist_ok=True, parents=True)
@@ -39,14 +40,14 @@ def train_VAE2():
 
     VAE2_model = VAE2(params).to(device)
 
-    data_module = VAEDataModule("datasets/Flickr500", batch_size=32, phase="B")
+    data_module = VAEDataModule("datasets/non_noisy", batch_size=32, phase="B")
 
     trainer = Trainer(accelerator=device,
                       devices=1 if device == "cuda" else None,
                       max_epochs=1000,
                       callbacks=[TQDMProgressBar(refresh_rate=1)],
-                      log_every_n_steps=8,
-                      check_val_every_n_epoch=20)
+                      log_every_n_steps=10,
+                      check_val_every_n_epoch=50)
 
     Path(f"{trainer.log_dir}/Input").mkdir(exist_ok=True, parents=True)
     Path(f"{trainer.log_dir}/Reconstructions").mkdir(exist_ok=True, parents=True)

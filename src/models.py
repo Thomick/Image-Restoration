@@ -9,13 +9,13 @@ from networks import *  # TODO: Import only the required classes
 
 # VAE with interwined latent space for real and synthetic images
 class VAE1(pl.LightningModule):
-    def __init__(self, params):
+    def __init__(self, params, device):
         super().__init__()
         self.vae = VAE()
         self.discriminator = Discriminator(4)
         self.discriminator_latent = Discriminator(3, in_channels=64)
         self.params = params
-        self.curr_device = None
+        self.curr_device = device
 
     def forward(self, x):
         return self.vae(x)
@@ -44,8 +44,9 @@ class VAE1(pl.LightningModule):
             vae_loss = loss_kl + \
                 self.params["a_reconst"] * loss_reconst + loss_g_gan + \
                 loss_latent_gan  # TODO:Verify parameters of the loss function
-            self.log("vae2_loss", vae_loss, prog_bar=True)
+            self.log("vae1_loss", vae_loss, prog_bar=True)
             self.log("loss_g_gan", loss_g_gan, prog_bar=True)
+            self.log("loss_latent_gan", loss_latent_gan, prog_bar=True)
             self.log("loss_kl", loss_kl, prog_bar=True)
             self.log("loss_reconst", loss_reconst, prog_bar=True)
             return vae_loss
@@ -103,7 +104,7 @@ class VAE1(pl.LightningModule):
         test_input = test_input.to(self.curr_device)
 
         #test_input, test_label = batch
-        recons, _ = self.vae(test_input)
+        recons, _ = self.vae.decode(self.vae.encode(test_input))
         vutils.save_image(recons.data,
                           os.path.join(self.logger.log_dir,
                                        "Reconstructions",
@@ -201,7 +202,7 @@ class VAE2(pl.LightningModule):
         test_input = test_input.to(self.curr_device)
 
         #test_input, test_label = batch
-        recons, _ = self.vae(test_input)
+        recons, _ = self.vae.decode(self.vae.encode(test_input))
         vutils.save_image(recons.data,
                           os.path.join(self.logger.log_dir,
                                        "Reconstructions",
