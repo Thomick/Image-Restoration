@@ -5,6 +5,7 @@ import pytorch_lightning as pl
 import torchvision.utils as vutils
 import torch
 from networks import *  # TODO: Import only the required classes
+from dataset import random_degradation
 
 
 # VAE with interwined latent space for real and synthetic images
@@ -15,7 +16,7 @@ class VAE1(pl.LightningModule):
         self.discriminator = Discriminator(4)
         self.discriminator_latent = Discriminator(3, in_channels=64)
         self.params = params
-        self.curr_device = device
+        self.curr_device = None
 
     def forward(self, x):
         return self.vae(x)
@@ -92,6 +93,7 @@ class VAE1(pl.LightningModule):
         return [opt_vae, opt_d, opt_d_latent], []
 
     def validation_step(self, batch, batch_idx):
+        self.curr_device = batch[0].device
         # TODO: Implement the validation step for VAE1
         pass
 
@@ -104,7 +106,7 @@ class VAE1(pl.LightningModule):
         test_input = test_input.to(self.curr_device)
 
         #test_input, test_label = batch
-        recons, _ = self.vae.decode(self.vae.encode(test_input))
+        recons = self.vae.decode(self.vae.encode(test_input))
         vutils.save_image(recons.data,
                           os.path.join(self.logger.log_dir,
                                        "Reconstructions",
@@ -202,7 +204,7 @@ class VAE2(pl.LightningModule):
         test_input = test_input.to(self.curr_device)
 
         #test_input, test_label = batch
-        recons, _ = self.vae.decode(self.vae.encode(test_input))
+        recons = self.vae.decode(self.vae.encode(test_input))
         vutils.save_image(recons.data,
                           os.path.join(self.logger.log_dir,
                                        "Reconstructions",
@@ -212,4 +214,102 @@ class VAE2(pl.LightningModule):
                           os.path.join(self.logger.log_dir,
                                        "Input",
                                        f"input_{self.logger.name}_Epoch_{self.current_epoch}.png"),
+                          nrow=8)
+
+
+class Mapping(pl.LightningModule):
+    def __init__(self, vae1_encoder, vae2, params, device="cuda"):
+        super().__init__()
+        self.vae1_encoder = vae1_encoder
+        self.vae2 = vae2
+        self.mapping = MappingNetwork()
+        self.discriminator = Discriminator()
+        self.params = params
+        self.curr_device = device
+
+    def forward(self, x):
+        latent1 = self.vae1_encoder(x)
+        latent2 = self.mapping(latent1)
+        return self.vae2.decode(latent2), latent1, latent2
+
+    def training_step(self, batch, batch_idx, optimizer_idx):
+        self.curr_device = batch[0].device
+
+        imgs, _ = batch
+        clean_img = imgs[:, 0, :, :, :]
+        noisy_img = imgs[:, 1, :, :, :]
+        if optimizer_idx == 0:
+            denoised, _, latent_denoised = self(noisy_img)
+            latent_clean = self.vae2.encode(clean_img)
+            restored = self.vae2.decode(latent_clean)
+            latent_loss = F.l1_loss(latent_denoised, latent_clean)
+
+            label_valid = torch.ones(denoised.size(0), 1).type_as(denoised)
+            gan_loss = F.mse_loss(self.discriminator(
+                denoised), label_valid)
+            mapping_loss = self.params["lambda1"] * latent_loss + gan_loss
+            self.log("latent_loss", latent_loss, prog_bar=True)
+            self.log("gan_loss", gan_loss, prog_bar=True)
+            self.log("mapping_loss", mapping_loss, prog_bar=True)
+            return mapping_loss
+
+        # train discriminator to distinguish real and reconstructed images (1=real, 0=recoonstructed)
+        if optimizer_idx == 1:
+
+            denoised, _, _ = self(noisy_img)
+            restored = self.vae2.decode(self.vae2.encode(clean_img))
+
+            label_valid = torch.ones(denoised.size(0), 1).type_as(denoised)
+
+            real_loss = F.mse_loss(self.discriminator(restored), label_valid)
+
+            label_fake = torch.zeros(denoised.size(0), 1).type_as(denoised)
+
+            fake_loss = F.mse_loss(
+                self.discriminator(denoised), label_fake)
+
+            d_loss = (real_loss + fake_loss) / 2
+            self.log("d_loss", d_loss, prog_bar=True)
+            return d_loss
+
+    def configure_optimizers(self):
+        lr = self.params['lr']
+        b1 = self.params['b1']
+        b2 = self.params['b2']
+
+        opt_mapping = torch.optim.Adam(
+            self.mapping.parameters(), lr=lr, betas=(b1, b2))
+        opt_d = torch.optim.Adam(
+            self.discriminator.parameters(), lr=lr, betas=(b1, b2))
+        return [opt_mapping, opt_d], []
+
+    def validation_step(self, batch, batch_idx):
+        self.curr_device = batch[0].device
+        pass
+
+    def on_validation_end(self) -> None:
+        self.sample_images()
+
+    def sample_images(self):
+        # Get sample reconstruction image
+        test_input, _ = next(iter(self.trainer.datamodule.test_dataloader()))
+        clean_input = test_input[:, 0, :, :, :].to(self.curr_device)
+        noisy_input = test_input[:, 1, :, :, :].to(self.curr_device)
+
+        #test_input, test_label = batch
+        recons, _, _ = self(noisy_input)
+        vutils.save_image(recons.data,
+                          os.path.join(self.logger.log_dir,
+                                       "Results",
+                                       f"result_{self.logger.name}_Epoch_{self.current_epoch}.png"),
+                          nrow=8)
+        vutils.save_image(clean_input.data,
+                          os.path.join(self.logger.log_dir,
+                                       "Clean_input",
+                                       f"clean_{self.logger.name}_Epoch_{self.current_epoch}.png"),
+                          nrow=8)
+        vutils.save_image(noisy_input.data,
+                          os.path.join(self.logger.log_dir,
+                                       "Noisy_input",
+                                       f"noisy_{self.logger.name}_Epoch_{self.current_epoch}.png"),
                           nrow=8)

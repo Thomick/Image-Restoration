@@ -68,7 +68,30 @@ class PhaseBDataset(Dataset):
         img = io.read_image(self.imgs[idx]).float()
         img = data_transform(img)
 
-        return 2*img/255-1, 0.0
+        return img/255, 0.0
+
+
+class MappingDataset(Dataset):
+    def __init__(self,
+                 data_dir: str,
+                 split: str):
+        # TODO :  Add a transform parameter
+        self.data_dir = Path(data_dir+"/non_noisy")
+        imgs = sorted(
+            [str(f) for f in self.data_dir.iterdir() if f.suffix == '.png'])
+
+        self.imgs = imgs[:int(
+            len(imgs) * 0.75)] if split == "train" else imgs[int(len(imgs) * 0.75):]
+
+    def __len__(self):
+        return len(self.imgs)
+
+    def __getitem__(self, idx):
+        img = io.read_image(self.imgs[idx]).float()
+        img = data_transform(img)
+        noisy_img = random_degradation(img)
+
+        return torch.stack([img/255, noisy_img/255]), 0.0
 
 
 class PhaseADataset(Dataset):
@@ -103,12 +126,12 @@ class PhaseADataset(Dataset):
             img = random_degradation(img)
         img = data_transform(img)
 
-        return 2*img/255-1, self.imgs[idx][1]
+        return img/255, self.imgs[idx][1]
 
 
 # DataModule for the VAE1 model
 # TODO: Rename the class to something more appropriate
-class VAEDataModule(LightningDataModule):
+class MyDataModule(LightningDataModule):
 
     def __init__(
         self,
@@ -128,9 +151,14 @@ class VAEDataModule(LightningDataModule):
         if self.phase == "A":
             self.val_dataset = PhaseADataset(self.data_dir, split="val")
             self.train_dataset = PhaseADataset(self.data_dir, split="train")
-        else:
+        elif self.phase == "B":
             self.val_dataset = PhaseBDataset(self.data_dir, split="val")
             self.train_dataset = PhaseBDataset(self.data_dir, split="train")
+        elif self.phase == "Mapping":
+            self.val_dataset = MappingDataset(self.data_dir, split="val")
+            self.train_dataset = MappingDataset(self.data_dir, split="train")
+        else:
+            raise Exception("Invalid phase")
 
     def train_dataloader(self):
         return DataLoader(

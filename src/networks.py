@@ -95,9 +95,9 @@ class ResBlock(nn.Module):
         return x + self.conv_block(x)
 
 
-class Mapping(nn.Module):
+class MappingNetwork(nn.Module):
     def __init__(self):
-        super(Mapping, self).__init__()
+        super(MappingNetwork, self).__init__()
 
         model_from_latent = [
             ConvBlock(64, 128, 3, 1, 1),
@@ -144,9 +144,9 @@ class NonLocalBlock2d(nn.Module):
                                out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
         self.w = nn.Conv2d(in_channels=self.inter_channels,
                            out_channels=self.in_channels, kernel_size=1, stride=1, padding=0)
-        self.resblock = nn.Sequential([ResBlock(self.in_channels),
+        self.resblock = nn.Sequential(ResBlock(self.in_channels),
                                       ResBlock(self.in_channels),
-                                      ResBlock(self.in_channels)])
+                                      ResBlock(self.in_channels))
 
     def forward(self, x):
         g_x = self.g(x).view(x.size(0), self.inter_channels, -1)
