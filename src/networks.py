@@ -53,7 +53,7 @@ class VAE(nn.Module):
 
 
 class ConvBlock(nn.Sequential):
-    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, activation=nn.ReLU()):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, activation=nn.ReLU(), use_norm=True):
         model = [
             nn.Conv2d(
                 in_channels,
@@ -61,9 +61,10 @@ class ConvBlock(nn.Sequential):
                 kernel_size,
                 stride,
                 padding,
-            ),
-            nn.InstanceNorm2d(out_channels),
-            activation]
+            )]
+        if use_norm:
+            model += [nn.InstanceNorm2d(out_channels)]
+        model += [activation]
         super(ConvBlock, self).__init__(*model)
 
 
@@ -167,32 +168,35 @@ class NonLocalBlock2d(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, n_conv=4, in_channels=3):
+    def __init__(self, n_layer=4, in_channels=3):
         super(Discriminator, self).__init__()
         # TODO : Verify the network structure in the paper
+        nf = 64
         model = [
-            nn.Conv2d(in_channels, 64, 4, 1, 1),
-            nn.LeakyReLU(0.2, inplace=True), ]
-        for _ in range(n_conv):
-            model += [
-                nn.Conv2d(64, 64, 4, 2, 1),
-                nn.LeakyReLU(0.2, inplace=True),
-                nn.AvgPool2d(3, stride=2, padding=[1, 1], count_include_pad=False), ]
+            ConvBlock(in_channels, nf, 4, 2, 1, activation=nn.LeakyReLU(0.2), use_norm=False)]
+        for _ in range(1, n_layer):
+            nf_prev = nf
+            nf = min(nf * 2, 512)
+            model += [ConvBlock(nf_prev, nf, 4, 2, 1,
+                                activation=nn.LeakyReLU(0.2))]
 
-        model += [
-            nn.Conv2d(64, 1, 3, 1, 1),
-            nn.Sigmoid()
-        ]
+        model += [ConvBlock(nf, nf, 4, 1, 1, activation=nn.LeakyReLU(0.2)),
+                  nn.Conv2d(nf, 1, 4, 1, 1)
+                  ]
         self.model = nn.Sequential(*model)
 
     def forward(self, x):
+        res = [x]
+        for layer in self.model:
+            res.append(layer(res[-1]))
         return self.model(x).reshape(-1, 1)
 
 
 class VGG19_torch(torch.nn.Module):
     def __init__(self, requires_grad=False):
         super(VGG19_torch, self).__init__()
-        vgg_pretrained_features = models.vgg19(pretrained=True).features
+        vgg_pretrained_features = models.vgg19(
+            weights=models.VGG19_Weights.DEFAULT).features
         self.slice1 = torch.nn.Sequential()
         self.slice2 = torch.nn.Sequential()
         self.slice3 = torch.nn.Sequential()
@@ -236,3 +240,12 @@ class VGGLoss_torch(nn.Module):
             loss += self.weights[i] * \
                 self.criterion(x_vgg[i], y_vgg[i].detach())
         return loss
+
+
+class GANLoss(nn.Module):
+    def forward(self, x, target_is_real):
+        if target_is_real:
+            target_tensor = torch.ones_like(x)
+        else:
+            target_tensor = torch.zeros_like(x)
+        return F.mse_loss(x, target_tensor)

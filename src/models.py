@@ -46,7 +46,8 @@ class VAE1(pl.LightningModule):
             vae_loss = loss_kl + \
                 self.params["a_reconst"] * loss_reconst + loss_g_gan + \
                 loss_latent_gan + \
-                self.loss_vgg(reconst_img, input_img)*self.params["lambda_vgg"]
+                self.loss_vgg(reconst_img, input_img) * \
+                self.params["lambda2_feat"]
 
             self.log("vae1_loss", vae_loss, prog_bar=True)
             self.log("loss_g_gan", loss_g_gan, prog_bar=True)
@@ -129,6 +130,8 @@ class VAE2(pl.LightningModule):
         self.discriminator = Discriminator()
         self.params = params
         self.curr_device = None
+        self.loss_vgg = VGGLoss_torch()
+        self.loss_gan = GANLoss()
 
     def forward(self, x):
         return self.vae(x)
@@ -142,41 +145,37 @@ class VAE2(pl.LightningModule):
         # train VAE2
         if optimizer_idx == 0:
 
-            # TODO : Log image in tensorboard
-            # log sampled images
-            #sample_imgs = self.generated_imgs[:6]
-            #grid = torchvision.utils.make_grid(sample_imgs)
-            #self.logger.experiment.add_image("generated_images", grid, 0)
+            pred_disc_real = self.discriminator(real_img)
+            pred_disc_fake = self.discriminator(reconst_img)
+            loss_g_gan = self.loss_gan(
+                pred_disc_fake[-1], target_is_real=True)
 
-            label_valid = torch.ones(real_img.size(0), 1)
-            label_valid = label_valid.type_as(real_img)
-
-            disc_pred = self.discriminator(reconst_img)
-            loss_g_gan = F.mse_loss(
-                disc_pred, label_valid)
             loss_kl = torch.mean(torch.pow(latent, 2))/2
             loss_reconst = F.l1_loss(reconst_img, real_img)
+
+            loss_feat_gan = torch.mean(
+                F.l1_loss(pred_disc_real, pred_disc_fake))  # times 4 in the original repo
+            loss_vgg = self.loss_vgg(reconst_img, real_img)
             vae_loss = loss_kl + \
-                self.params["a_reconst"] * loss_reconst + loss_g_gan
+                self.params["a_reconst"] * loss_reconst + loss_g_gan + \
+                (loss_vgg +
+                 loss_feat_gan)*self.params["lambda2_feat"]
+
             self.log("vae2_loss", vae_loss, prog_bar=True)
             self.log("loss_g_gan", loss_g_gan, prog_bar=True)
             self.log("loss_kl", loss_kl, prog_bar=True)
             self.log("loss_reconst", loss_reconst, prog_bar=True)
+            self.log("loss_feat_gan", loss_feat_gan)
+            self.log("loss_vgg", loss_vgg)
             return vae_loss
 
         # train discriminator to distinguish real and reconstructed images (1=real, 0=recoonstructed)
         if optimizer_idx == 1:
+            real_loss = self.loss_gan(self.discriminator(
+                real_img)[-1], target_is_real=True)
 
-            label_valid = torch.ones(real_img.size(0), 1)
-            label_valid = label_valid.type_as(real_img)
-
-            real_loss = F.mse_loss(self.discriminator(real_img), label_valid)
-
-            label_fake = torch.zeros(real_img.size(0), 1)
-            label_fake = label_fake.type_as(real_img)
-
-            fake_loss = F.mse_loss(
-                self.discriminator(reconst_img), label_fake)
+            fake_loss = self.loss_gan(
+                self.discriminator(reconst_img)[-1], target_is_real=False)
 
             d_loss = (real_loss + fake_loss) / 2
             self.log("d_loss", d_loss, prog_bar=True)

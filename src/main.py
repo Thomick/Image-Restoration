@@ -1,3 +1,3 @@
 from train import *
 
-train_Mapping()
+train_VAE2()

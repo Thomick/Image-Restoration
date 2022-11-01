@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 params = {
-    'lr': 2e-3,
+    'lr': 2e-4,
     'a_reconst': 10,
     'b1': 0.5,
     'b2': 0.999,
