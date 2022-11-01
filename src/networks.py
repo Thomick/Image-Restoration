@@ -166,24 +166,21 @@ class NonLocalBlock2d(nn.Module):
         return z
 
 
-def SN(module): return torch.nn.utils.spectral_norm(module)
-
-
 class Discriminator(nn.Module):
     def __init__(self, n_conv=4, in_channels=3):
         super(Discriminator, self).__init__()
         # TODO : Verify the network structure in the paper
         model = [
-            SN(nn.Conv2d(in_channels, 64, 4, 1, 1)),
+            nn.Conv2d(in_channels, 64, 4, 1, 1),
             nn.LeakyReLU(0.2, inplace=True), ]
         for _ in range(n_conv):
             model += [
-                SN(nn.Conv2d(64, 64, 4, 2, 1)),
+                nn.Conv2d(64, 64, 4, 2, 1),
                 nn.LeakyReLU(0.2, inplace=True),
                 nn.AvgPool2d(3, stride=2, padding=[1, 1], count_include_pad=False), ]
 
         model += [
-            SN(nn.Conv2d(64, 1, 3, 1, 1)),
+            nn.Conv2d(64, 1, 3, 1, 1),
             nn.Sigmoid()
         ]
         self.model = nn.Sequential(*model)
