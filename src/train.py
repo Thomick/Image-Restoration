@@ -11,7 +11,8 @@ params = {
     'a_reconst': 10,
     'b1': 0.5,
     'b2': 0.999,
-    'lambda1': 60,
+    'lambda1_recons': 60,
+    'lambda2_feat': 10,
 }
 
 

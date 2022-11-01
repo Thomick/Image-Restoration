@@ -10,13 +10,14 @@ from dataset import random_degradation
 
 # VAE with interwined latent space for real and synthetic images
 class VAE1(pl.LightningModule):
-    def __init__(self, params, device):
+    def __init__(self, params):
         super().__init__()
         self.vae = VAE()
         self.discriminator = Discriminator(4)
         self.discriminator_latent = Discriminator(3, in_channels=64)
         self.params = params
         self.curr_device = None
+        self.loss_vgg = VGGLoss_torch()
 
     def forward(self, x):
         return self.vae(x)
@@ -44,7 +45,9 @@ class VAE1(pl.LightningModule):
                 self.discriminator_latent(latent), 1-label)
             vae_loss = loss_kl + \
                 self.params["a_reconst"] * loss_reconst + loss_g_gan + \
-                loss_latent_gan  # TODO:Verify parameters of the loss function
+                loss_latent_gan + \
+                self.loss_vgg(reconst_img, input_img)*self.params["lambda_vgg"]
+
             self.log("vae1_loss", vae_loss, prog_bar=True)
             self.log("loss_g_gan", loss_g_gan, prog_bar=True)
             self.log("loss_latent_gan", loss_latent_gan, prog_bar=True)
@@ -247,7 +250,7 @@ class Mapping(pl.LightningModule):
             label_valid = torch.ones(denoised.size(0), 1).type_as(denoised)
             gan_loss = F.mse_loss(self.discriminator(
                 denoised), label_valid)
-            mapping_loss = self.params["lambda1"] * latent_loss + gan_loss
+            mapping_loss = self.params["lambda1_l1"] * latent_loss + gan_loss
             self.log("latent_loss", latent_loss, prog_bar=True)
             self.log("gan_loss", gan_loss, prog_bar=True)
             self.log("mapping_loss", mapping_loss, prog_bar=True)
