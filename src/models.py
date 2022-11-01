@@ -18,15 +18,14 @@ class VAE1(pl.LightningModule):
         self.params = params
         self.curr_device = None
         self.loss_vgg = VGGLoss_torch()
+        self.loss_gan = GANLoss()
 
     def forward(self, x):
         return self.vae(x)
 
     def training_step(self, batch, batch_idx, optimizer_idx):
         self.curr_device = batch[0].device
-        opt = self.optimizers()[0]
 
-        # TODO: Use the usual format of batch (data,label)
         input_img, label = batch  # 1=real noise, 0=generated noise
         reconst_img, latent = self(input_img)
         label = label.type_as(input_img).reshape(-1, 1)
@@ -36,45 +35,47 @@ class VAE1(pl.LightningModule):
             label_valid = torch.ones(input_img.size(0), 1)
             label_valid = label_valid.type_as(input_img)
 
-            disc_pred = self.discriminator(reconst_img)
-            loss_g_gan = F.mse_loss(
-                disc_pred, label_valid)
+            pred_disc_real = self.discriminator(input_img)
+            pred_disc_fake = self.discriminator(reconst_img)
+            loss_g_gan = self.loss_gan(
+                pred_disc_fake[-1], target_is_real=True)
             loss_kl = torch.mean(torch.pow(latent, 2))/2
             loss_reconst = F.l1_loss(reconst_img, input_img)
             loss_latent_gan = F.mse_loss(
                 self.discriminator_latent(latent), 1-label)
+            loss_feat_gan = torch.mean(
+                F.l1_loss(pred_disc_real, pred_disc_fake))  # times 4 in the original repo
+            loss_vgg = self.loss_vgg(reconst_img, input_img)
             vae_loss = loss_kl + \
                 self.params["a_reconst"] * loss_reconst + loss_g_gan + \
                 loss_latent_gan + \
-                self.loss_vgg(reconst_img, input_img) * \
-                self.params["lambda2_feat"]
+                (loss_vgg +
+                 loss_feat_gan)*self.params["lambda2_feat"]
 
             self.log("vae1_loss", vae_loss, prog_bar=True)
             self.log("loss_g_gan", loss_g_gan, prog_bar=True)
             self.log("loss_latent_gan", loss_latent_gan, prog_bar=True)
             self.log("loss_kl", loss_kl, prog_bar=True)
             self.log("loss_reconst", loss_reconst, prog_bar=True)
+            self.log("loss_feat_gan", loss_feat_gan)
+            self.log("loss_vgg", loss_vgg)
             return vae_loss
 
         # train discriminator
         if optimizer_idx == 1:
 
-            label_valid = torch.ones(input_img.size(0), 1)
-            label_valid = label_valid.type_as(input_img)
+            real_loss = self.loss_gan(self.discriminator(
+                input_img)[-1], target_is_real=True)
 
-            real_loss = F.mse_loss(self.discriminator(input_img), label_valid)
+            fake_loss = self.loss_gan(
+                self.discriminator(reconst_img)[-1], target_is_real=False)
 
-            label_fake = torch.zeros(input_img.size(0), 1)
-            label_fake = label_fake.type_as(input_img)
-
-            synth_loss = F.mse_loss(
-                self.discriminator(reconst_img), label_fake)
-
-            d_loss = (real_loss + synth_loss) / 2
+            d_loss = (real_loss + fake_loss) / 2
             self.log("d_loss", d_loss, prog_bar=True)
             return d_loss
 
         # train discriminator for the latent space
+        # TODO : Verify if we use some kind of feature matching here
         if optimizer_idx == 2:
 
             d_latent_loss = F.mse_loss(
@@ -228,6 +229,8 @@ class Mapping(pl.LightningModule):
         self.discriminator = Discriminator()
         self.params = params
         self.curr_device = device
+        self.loss_vgg = VGGLoss_torch()
+        self.loss_gan = GANLoss()
 
     def forward(self, x):
         latent1 = self.vae1_encoder(x)
@@ -244,15 +247,24 @@ class Mapping(pl.LightningModule):
             denoised, _, latent_denoised = self(noisy_img)
             latent_clean = self.vae2.encode(clean_img)
             restored = self.vae2.decode(latent_clean)
-            latent_loss = F.l1_loss(latent_denoised, latent_clean)
 
+            latent_loss = F.l1_loss(latent_denoised, latent_clean)
             label_valid = torch.ones(denoised.size(0), 1).type_as(denoised)
-            gan_loss = F.mse_loss(self.discriminator(
-                denoised), label_valid)
-            mapping_loss = self.params["lambda1_l1"] * latent_loss + gan_loss
+
+            pred_disc_real = self.discriminator(restored)
+            pred_disc_fake = self.discriminator(denoised)
+            gan_loss = self.loss_gan(pred_disc_fake, True)
+            loss_feat_gan = torch.mean(
+                F.l1_loss(pred_disc_real, pred_disc_fake))  # times 4 in the original repo
+            loss_vgg = self.loss_vgg(denoised, restored)
+            mapping_loss = self.params["lambda1_l1"] * latent_loss + gan_loss + \
+                (loss_vgg +
+                 loss_feat_gan)*self.params["lambda2_feat"]
             self.log("latent_loss", latent_loss, prog_bar=True)
             self.log("gan_loss", gan_loss, prog_bar=True)
             self.log("mapping_loss", mapping_loss, prog_bar=True)
+            self.log("loss_feat_gan", loss_feat_gan)
+            self.log("loss_vgg", loss_vgg)
             return mapping_loss
 
         # train discriminator to distinguish real and reconstructed images (1=real, 0=recoonstructed)
@@ -261,14 +273,8 @@ class Mapping(pl.LightningModule):
             denoised, _, _ = self(noisy_img)
             restored = self.vae2.decode(self.vae2.encode(clean_img))
 
-            label_valid = torch.ones(denoised.size(0), 1).type_as(denoised)
-
-            real_loss = F.mse_loss(self.discriminator(restored), label_valid)
-
-            label_fake = torch.zeros(denoised.size(0), 1).type_as(denoised)
-
-            fake_loss = F.mse_loss(
-                self.discriminator(denoised), label_fake)
+            real_loss = self.loss_gan(self.discriminator(restored), True)
+            fake_loss = self.loss_gan(self.discriminator(denoised), False)
 
             d_loss = (real_loss + fake_loss) / 2
             self.log("d_loss", d_loss, prog_bar=True)
