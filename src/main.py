@@ -1,3 +1,3 @@
 from train import *
 
-train_VAE2()
+train_VAE1()

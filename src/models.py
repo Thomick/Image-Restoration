@@ -32,8 +32,6 @@ class VAE1(pl.LightningModule):
 
         # train VAE1
         if optimizer_idx == 0:
-            label_valid = torch.ones(input_img.size(0), 1)
-            label_valid = label_valid.type_as(input_img)
 
             pred_disc_real = self.discriminator(input_img)
             pred_disc_fake = self.discriminator(reconst_img)
@@ -41,10 +39,17 @@ class VAE1(pl.LightningModule):
                 pred_disc_fake[-1], target_is_real=True)
             loss_kl = torch.mean(torch.pow(latent, 2))/2
             loss_reconst = F.l1_loss(reconst_img, input_img)
-            loss_latent_gan = F.mse_loss(
-                self.discriminator_latent(latent), 1-label)
-            loss_feat_gan = torch.mean(
-                F.l1_loss(pred_disc_real, pred_disc_fake))  # times 4 in the original repo
+            loss_latent_gan = self.loss_gan(
+                self.discriminator_latent(latent)[-1], 1-label)
+
+            loss_feat_gan = 0
+            n_layers = len(pred_disc_real)
+            for i in range(n_layers):
+                # times 4 in the original repo
+                loss_feat_gan += F.l1_loss(
+                    pred_disc_real[i], pred_disc_fake[i])
+            loss_feat_gan /= n_layers
+
             loss_vgg = self.loss_vgg(reconst_img, input_img)
             vae_loss = loss_kl + \
                 self.params["a_reconst"] * loss_reconst + loss_g_gan + \
@@ -78,8 +83,8 @@ class VAE1(pl.LightningModule):
         # TODO : Verify if we use some kind of feature matching here
         if optimizer_idx == 2:
 
-            d_latent_loss = F.mse_loss(
-                self.discriminator_latent(latent), label)
+            d_latent_loss = self.loss_gan(
+                self.discriminator_latent(latent)[-1], label)
 
             self.log("d_latent_loss", d_latent_loss, prog_bar=True)
             return d_latent_loss
@@ -154,8 +159,14 @@ class VAE2(pl.LightningModule):
             loss_kl = torch.mean(torch.pow(latent, 2))/2
             loss_reconst = F.l1_loss(reconst_img, real_img)
 
-            loss_feat_gan = torch.mean(
-                F.l1_loss(pred_disc_real, pred_disc_fake))  # times 4 in the original repo
+            loss_feat_gan = 0
+            n_layers = len(pred_disc_real)
+            for i in range(n_layers):
+                # times 4 in the original repo
+                loss_feat_gan += F.l1_loss(
+                    pred_disc_real[i], pred_disc_fake[i])
+            loss_feat_gan /= n_layers
+
             loss_vgg = self.loss_vgg(reconst_img, real_img)
             vae_loss = loss_kl + \
                 self.params["a_reconst"] * loss_reconst + loss_g_gan + \
@@ -254,8 +265,15 @@ class Mapping(pl.LightningModule):
             pred_disc_real = self.discriminator(restored)
             pred_disc_fake = self.discriminator(denoised)
             gan_loss = self.loss_gan(pred_disc_fake, True)
-            loss_feat_gan = torch.mean(
-                F.l1_loss(pred_disc_real, pred_disc_fake))  # times 4 in the original repo
+
+            loss_feat_gan = 0
+            n_layers = len(pred_disc_real)
+            for i in range(n_layers):
+                # times 4 in the original repo
+                loss_feat_gan += F.l1_loss(
+                    pred_disc_real[i], pred_disc_fake[i])
+            loss_feat_gan /= n_layers
+
             loss_vgg = self.loss_vgg(denoised, restored)
             mapping_loss = self.params["lambda1_l1"] * latent_loss + gan_loss + \
                 (loss_vgg +

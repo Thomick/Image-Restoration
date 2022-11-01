@@ -189,7 +189,7 @@ class Discriminator(nn.Module):
         res = [x]
         for layer in self.model:
             res.append(layer(res[-1]))
-        return self.model(x).reshape(-1, 1)
+        return res
 
 
 class VGG19_torch(torch.nn.Module):
@@ -244,8 +244,14 @@ class VGGLoss_torch(nn.Module):
 
 class GANLoss(nn.Module):
     def forward(self, x, target_is_real):
-        if target_is_real:
+        if isinstance(target_is_real, torch.Tensor):
             target_tensor = torch.ones_like(x)
+            target_tensor = torch.mul(
+                target_tensor, target_is_real.unsqueeze(-1).unsqueeze(-1))
+        elif isinstance(target_is_real, bool):
+            target_tensor = torch.ones_like(
+                x) if target_is_real else torch.zeros_like(x)
         else:
-            target_tensor = torch.zeros_like(x)
+            raise ValueError(
+                "target_is_real should be either Tensor or bool, but got {}".format(type(target_is_real)))
         return F.mse_loss(x, target_tensor)

@@ -19,9 +19,9 @@ params = {
 def train_VAE1():
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    VAE1_model = VAE1(params, device).to(device)
+    VAE1_model = VAE1(params).to(device)
 
-    data_module = MyDataModule("datasets", batch_size=32, phase="A")
+    data_module = MyDataModule("datasets", batch_size=16, phase="A")
 
     trainer = Trainer(accelerator=device,
                       devices=1 if device == "cuda" else None,
@@ -42,7 +42,7 @@ def train_VAE2():
 
     VAE2_model = VAE2(params).to(device)
 
-    data_module = MyDataModule("datasets/non_noisy", batch_size=32, phase="B")
+    data_module = MyDataModule("datasets/non_noisy", batch_size=16, phase="B")
 
     trainer = Trainer(accelerator=device,
                       devices=1 if device == "cuda" else None,
