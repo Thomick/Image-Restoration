@@ -162,6 +162,6 @@ def visualize_full_real(dataset="train", full_model=None):
 
 
 if __name__ == "__main__":
-    visualize_full()
-    # visualize_VAE1()
-    # visualize_VAE2()
+    # visualize_full()
+    visualize_VAE1()
+    visualize_VAE2()

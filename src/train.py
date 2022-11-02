@@ -76,7 +76,7 @@ def train_Mapping():
                       max_epochs=1000,
                       callbacks=[TQDMProgressBar(refresh_rate=1)],
                       log_every_n_steps=10,
-                      check_val_every_n_epoch=25)
+                      check_val_every_n_epoch=5)
 
     Path(f"{trainer.log_dir}/Clean_input").mkdir(exist_ok=True, parents=True)
     Path(f"{trainer.log_dir}/Noisy_input").mkdir(exist_ok=True, parents=True)

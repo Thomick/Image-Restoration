@@ -174,7 +174,7 @@ class VAE2(pl.LightningModule):
                  loss_feat_gan)*self.params["lambda2_feat"]
 
             self.log("vae2_loss", vae_loss, prog_bar=True)
-            self.log("loss_g_gan", loss_g_gan, prog_bar=True)
+            self.log("w", loss_g_gan, prog_bar=True)
             self.log("loss_kl", loss_kl, prog_bar=True)
             self.log("loss_reconst", loss_reconst, prog_bar=True)
             self.log("loss_feat_gan", loss_feat_gan)
@@ -260,12 +260,11 @@ class Mapping(pl.LightningModule):
             restored = self.vae2.decode(latent_clean)
 
             latent_loss = F.l1_loss(latent_denoised, latent_clean)
-            label_valid = torch.ones(denoised.size(0), 1).type_as(denoised)
 
             pred_disc_real = self.discriminator(restored)
             pred_disc_fake = self.discriminator(denoised)
-            gan_loss = self.loss_gan(pred_disc_fake, True)
-
+            loss_g_gan = self.loss_gan(
+                pred_disc_fake[-1], target_is_real=True)
             loss_feat_gan = 0
             n_layers = len(pred_disc_real)
             for i in range(n_layers):
@@ -275,11 +274,11 @@ class Mapping(pl.LightningModule):
             loss_feat_gan /= n_layers
 
             loss_vgg = self.loss_vgg(denoised, restored)
-            mapping_loss = self.params["lambda1_l1"] * latent_loss + gan_loss + \
+            mapping_loss = self.params["lambda1_recons"] * latent_loss + loss_g_gan + \
                 (loss_vgg +
                  loss_feat_gan)*self.params["lambda2_feat"]
             self.log("latent_loss", latent_loss, prog_bar=True)
-            self.log("gan_loss", gan_loss, prog_bar=True)
+            self.log("loss_g_gan", loss_g_gan, prog_bar=True)
             self.log("mapping_loss", mapping_loss, prog_bar=True)
             self.log("loss_feat_gan", loss_feat_gan)
             self.log("loss_vgg", loss_vgg)
@@ -291,8 +290,8 @@ class Mapping(pl.LightningModule):
             denoised, _, _ = self(noisy_img)
             restored = self.vae2.decode(self.vae2.encode(clean_img))
 
-            real_loss = self.loss_gan(self.discriminator(restored), True)
-            fake_loss = self.loss_gan(self.discriminator(denoised), False)
+            real_loss = self.loss_gan(self.discriminator(restored)[-1], True)
+            fake_loss = self.loss_gan(self.discriminator(denoised)[-1], False)
 
             d_loss = (real_loss + fake_loss) / 2
             self.log("d_loss", d_loss, prog_bar=True)
