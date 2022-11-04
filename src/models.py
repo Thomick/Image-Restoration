@@ -2,12 +2,13 @@
 
 import os
 import pytorch_lightning as pl
-import torchvision.utils as vutils
 import torch
-from networks import *  # TODO: Import only the required classes
-from dataset import random_degradation
-from evaluate import save_image
+import torch.nn.functional as F
+from networks import VAENetwork, MappingNetwork, Discriminator, VGGLoss, GANLoss
+from utils import save_image
 
+
+# TODO : Remove the losses from the progress bar
 
 # VAE with interwined latent space for real and synthetic images
 # Input: Noisy images (real and synthetic)
@@ -15,7 +16,7 @@ from evaluate import save_image
 class VAE1(pl.LightningModule):
     def __init__(self, params):
         super().__init__()
-        self.vae = VAE()
+        self.vae = VAENetwork()
         self.discriminator = Discriminator(4)
         self.discriminator_latent = Discriminator(3, in_channels=64)
         self.params = params
@@ -144,7 +145,7 @@ class VAE1(pl.LightningModule):
 class VAE2(pl.LightningModule):
     def __init__(self, params):
         super().__init__()
-        self.vae = VAE()
+        self.vae = VAENetwork()
         self.discriminator = Discriminator()
         self.params = params
         self.curr_device = None
@@ -251,14 +252,13 @@ class VAE2(pl.LightningModule):
 
 # Mapping from the latent space of VAE1 to the latent space of VAE2
 class Mapping(pl.LightningModule):
-    def __init__(self, vae1_encoder, vae2, params, device="cuda"):
+    def __init__(self, vae1_encoder, vae2, params):
         super().__init__()
         self.vae1_encoder = vae1_encoder
         self.vae2 = vae2
         self.mapping = MappingNetwork()
         self.discriminator = Discriminator()
         self.params = params
-        self.curr_device = device
         self.loss_vgg = VGGLoss()
         self.loss_gan = GANLoss()
 

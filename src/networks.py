@@ -6,9 +6,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class VAE(nn.Module):
+class VAENetwork(nn.Module):
     def __init__(self, hidden_dim=64, latent_dim=64, activation=nn.ReLU):
-        super(VAE, self).__init__()
+        super(VAENetwork, self).__init__()
 
         activation = nn.ReLU()
         hidden_channel_dim = 64

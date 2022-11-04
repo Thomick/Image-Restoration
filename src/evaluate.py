@@ -1,13 +1,11 @@
 from dataset import GenericDataModule
 from models import VAE2, VAE1, Mapping
-from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks.progress import TQDMProgressBar
 import torch
 from pathlib import Path
 import os
 import numpy as np
+from utils import psnr, save_image
 
-import torchvision.utils as vutils
 
 params = {
     "lr": 2e-3,
@@ -16,21 +14,6 @@ params = {
     "b2": 0.999,
     "lambda1": 60,
 }
-
-# Save
-
-
-def save_image(images, path, nrow=8, value_range=(0, 1)):
-    Path(path).parent.mkdir(exist_ok=True, parents=True)
-    vutils.save_image(images, path, nrow, normalize=True, value_range=value_range)
-
-
-# Compute PSNR between two images
-def psnr(imgs1, imgs2):
-    mse = torch.mean((imgs1 - imgs2) ** 2, axis=(1, 2, 3))
-    mse += 100 * torch.eq(mse, 0).float()
-    PIXEL_MAX = 1.0
-    return 20 * torch.log10(PIXEL_MAX / torch.sqrt(mse))
 
 
 # Load a checkpoint of VAE1 and visualize the results on one batch of either the train or validation set
