@@ -1,4 +1,4 @@
-from dataset import MyDataModule
+from dataset import GenericDataModule
 from models import VAE2, VAE1, Mapping
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.progress import TQDMProgressBar
@@ -6,7 +6,7 @@ import torch
 from pathlib import Path
 
 
-params = {
+hparams = {
     'lr': 2e-4,
     'a_reconst': 10,
     'b1': 0.5,
@@ -15,13 +15,16 @@ params = {
     'lambda2_feat': 10,
 }
 
+# TODO : Add parameters to specify the training parameters (dataset, batch size, etc.)
+# TODO : Allow to resume training
+
 
 def train_VAE1():
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    VAE1_model = VAE1(params).to(device)
+    VAE1_model = VAE1(hparams).to(device)
 
-    data_module = MyDataModule("datasets", batch_size=16, phase="A")
+    data_module = GenericDataModule("datasets", batch_size=16, phase="A")
 
     trainer = Trainer(accelerator=device,
                       devices=1 if device == "cuda" else None,
@@ -37,12 +40,12 @@ def train_VAE1():
 
 
 def train_VAE2():
-    # TODO : Allow to resume training
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    VAE2_model = VAE2(params).to(device)
+    VAE2_model = VAE2(hparams).to(device)
 
-    data_module = MyDataModule("datasets/non_noisy", batch_size=16, phase="B")
+    data_module = GenericDataModule(
+        "datasets", batch_size=16, phase="B")
 
     trainer = Trainer(accelerator=device,
                       devices=1 if device == "cuda" else None,
@@ -58,18 +61,17 @@ def train_VAE2():
 
 
 def train_Mapping():
-    # TODO : Allow to resume training
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     vae1_chkp_path = "vae1.ckpt"
     vae2_chkp_path = "vae2.ckpt"
     vae1_encoder = VAE1.load_from_checkpoint(
-        vae1_chkp_path, params=params, device='cpu').vae.encoder
+        vae1_chkp_path, params=hparams, device='cpu').vae.encoder
     vae2 = VAE2.load_from_checkpoint(
-        vae2_chkp_path, params=params, device='cpu').vae
-    mapping_model = Mapping(vae1_encoder, vae2, params).to(device)
+        vae2_chkp_path, params=hparams, device='cpu').vae
+    mapping_model = Mapping(vae1_encoder, vae2, hparams).to(device)
 
-    data_module = MyDataModule("datasets", batch_size=8, phase="Mapping")
+    data_module = GenericDataModule("datasets", batch_size=8, phase="Mapping")
 
     trainer = Trainer(accelerator=device,
                       devices=1 if device == "cuda" else None,

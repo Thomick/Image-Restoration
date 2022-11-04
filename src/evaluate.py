@@ -1,4 +1,4 @@
-from dataset import MyDataModule
+from dataset import GenericDataModule
 from models import VAE2, VAE1, Mapping
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.progress import TQDMProgressBar
@@ -17,7 +17,10 @@ params = {
     'lambda1': 60,
 }
 
+# TODO: Add helper function to save a batch of images to disk (with clipping)
 
+
+# Compute PSNR between two images
 def psnr(imgs1, imgs2):
     mse = torch.mean((imgs1 - imgs2) ** 2, axis=(1, 2, 3))
     mse += 100*torch.eq(mse, 0).float()
@@ -25,13 +28,14 @@ def psnr(imgs1, imgs2):
     return 20 * torch.log10(PIXEL_MAX / torch.sqrt(mse))
 
 
+# Load a checkpoint of VAE1 and visualize the results on one batch of either the train or validation set
 def visualize_VAE1(dataset="train"):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     VAE1_model = VAE1.load_from_checkpoint(
         "vae1.ckpt", params=params, device=device).to(device)
 
-    data_module = MyDataModule("datasets", batch_size=32, phase="A")
+    data_module = GenericDataModule("datasets", batch_size=32, phase="A")
     data_module.setup()
     if dataset == "train":
         dataloader = data_module.train_dataloader()
@@ -56,13 +60,15 @@ def visualize_VAE1(dataset="train"):
     np.savetxt("vae1_vis/psnr.txt", psnr(recons, image).detach().cpu().numpy())
 
 
+# Load a checkpoint of VAE2 and visualize the results on one batch of either the train or validation set
 def visualize_VAE2(dataset="train"):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     VAE2_model = VAE2.load_from_checkpoint(
         "vae2.ckpt", params=params, device=device).to(device)
 
-    data_module = MyDataModule("datasets/non_noisy", batch_size=32, phase="B")
+    data_module = GenericDataModule(
+        "datasets/non_noisy", batch_size=32, phase="B")
     data_module.setup()
     if dataset == "train":
         dataloader = data_module.train_dataloader()
@@ -87,6 +93,7 @@ def visualize_VAE2(dataset="train"):
     np.savetxt("vae2_vis/psnr.txt", psnr(recons, image).detach().cpu().numpy())
 
 
+# Load a checkpoint of the full model and visualize the results on one batch of either the train or validation set
 def visualize_full(dataset="train"):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -100,10 +107,11 @@ def visualize_full(dataset="train"):
     visualize_full_real(dataset, full_model)
 
 
+# Visualize the results of the full model on one batch of images from the synthetic dataset
 def visualize_full_synth(dataset="train", full_model=None):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    data_module = MyDataModule("datasets", batch_size=8, phase="Mapping")
+    data_module = GenericDataModule("datasets", batch_size=8, phase="Mapping")
     data_module.setup()
     if dataset == "train":
         dataloader = data_module.train_dataloader()
@@ -135,9 +143,11 @@ def visualize_full_synth(dataset="train", full_model=None):
                denoised).detach().cpu().numpy())
 
 
+# Visualize the results of the full model on one batch of images from the real noisy image dataset
 def visualize_full_real(dataset="train", full_model=None):
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    data_module = MyDataModule("datasets/noisy", batch_size=8, phase="B")
+    data_module = GenericDataModule(
+        "datasets/noisy", batch_size=8, phase="Vanilla")
     data_module.setup()
     if dataset == "train":
         dataloader = data_module.train_dataloader()

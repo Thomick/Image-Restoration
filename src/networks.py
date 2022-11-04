@@ -7,14 +7,13 @@ import torch.nn.functional as F
 
 
 class VAE(nn.Module):
-    def __init__(self):
+    def __init__(self, hidden_dim=64, latent_dim=64, activation=nn.ReLU):
         super(VAE, self).__init__()
 
-        # TODO : Remove hard-coded values:hidden_dim, activation
         activation = nn.ReLU()
         hidden_channel_dim = 64
 
-        model = [
+        encoder = [
             ConvBlock(3, hidden_channel_dim, 7, 1, 'same', activation),
             ConvBlock(hidden_channel_dim, hidden_channel_dim,
                       4, 2, 1, activation),
@@ -25,9 +24,9 @@ class VAE(nn.Module):
             ResBlock(hidden_channel_dim),
             ResBlock(hidden_channel_dim)
         ]
-        self.encoder = nn.Sequential(*model)
+        self.encoder = nn.Sequential(*encoder)
 
-        model = [
+        decoder = [
             ResBlock(hidden_channel_dim),
             ResBlock(hidden_channel_dim),
             ResBlock(hidden_channel_dim),
@@ -36,7 +35,7 @@ class VAE(nn.Module):
             DeconvBlock(64, 64, 4, 2, 1, activation),
             nn.Conv2d(64, 3, 7, 1, 'same')
         ]
-        self.decoder = nn.Sequential(*model)
+        self.decoder = nn.Sequential(*decoder)
 
     def encode(self, x):
         return self.encoder(x)
@@ -52,6 +51,7 @@ class VAE(nn.Module):
         return x_reconst, latent
 
 
+# ConvBlock is a convolutional layer followed by a normalization layer(optional) and an activation function
 class ConvBlock(nn.Sequential):
     def __init__(self, in_channels, out_channels, kernel_size, stride, padding, activation=nn.ReLU(), use_norm=True):
         model = [
@@ -68,8 +68,9 @@ class ConvBlock(nn.Sequential):
         super(ConvBlock, self).__init__(*model)
 
 
+# DeconvBlock is a transposed convolutional layer followed by a normalization layer(optional) and an activation function
 class DeconvBlock(nn.Sequential):
-    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, activation=nn.ReLU()):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, activation=nn.ReLU(), use_norm=True):
         model = [
             nn.ConvTranspose2d(
                 in_channels,
@@ -77,10 +78,13 @@ class DeconvBlock(nn.Sequential):
                 kernel_size,
                 stride,
                 padding,
-            ),
-            nn.InstanceNorm2d(out_channels),
-            activation]
+            )]
+        if use_norm:
+            model += [nn.InstanceNorm2d(out_channels)]
+        model += [activation]
         super(DeconvBlock, self).__init__(*model)
+
+# ResBlock is a residual block with two convolutional layers
 
 
 class ResBlock(nn.Module):
@@ -97,6 +101,7 @@ class ResBlock(nn.Module):
         return x + self.conv_block(x)
 
 
+# MappingNetwork links the latent spaces of the two vae models)
 class MappingNetwork(nn.Module):
     def __init__(self):
         super(MappingNetwork, self).__init__()
@@ -127,9 +132,9 @@ class MappingNetwork(nn.Module):
         return self.model(x)
 
 
+# Implementation of Non-local block described in https://arxiv.org/abs/1711.07971
+# Embedded gaussian version + ResBlocks after W
 class NonLocalBlock2d(nn.Module):
-    # Implementation of Non-local block from https://arxiv.org/abs/1711.07971
-    # Embedded gaussian version + ResBlocks after W
     def __init__(self, in_channels, inter_channels=None):
         super(NonLocalBlock2d, self).__init__()
         self.in_channels = in_channels
@@ -166,11 +171,12 @@ class NonLocalBlock2d(nn.Module):
         z = self.resblock(w_y + x)
         return z
 
+# TODO : Implement Multi-scale discriminator
+
 
 class Discriminator(nn.Module):
     def __init__(self, n_layer=4, in_channels=3):
         super(Discriminator, self).__init__()
-        # TODO : Verify the network structure in the paper
         nf = 64
         model = [
             ConvBlock(in_channels, nf, 4, 2, 1, activation=nn.LeakyReLU(0.2), use_norm=False)]
@@ -192,6 +198,8 @@ class Discriminator(nn.Module):
         return res
 
 
+# VGG19 network for perceptual loss
+# TODO : Find reference for this implementation of perceptual loss
 class VGG19_torch(torch.nn.Module):
     def __init__(self, requires_grad=False):
         super(VGG19_torch, self).__init__()
@@ -226,9 +234,10 @@ class VGG19_torch(torch.nn.Module):
         return out
 
 
-class VGGLoss_torch(nn.Module):
+# Compute perceptual loss as weighted sum of L1 loss between VGG19 features at specified layers
+class VGGLoss(nn.Module):
     def __init__(self):
-        super(VGGLoss_torch, self).__init__()
+        super(VGGLoss, self).__init__()
         self.vgg = VGG19_torch()
         self.criterion = nn.L1Loss()
         self.weights = [1.0/32, 1.0/16, 1.0/8, 1.0/4, 1.0]
@@ -242,6 +251,7 @@ class VGGLoss_torch(nn.Module):
         return loss
 
 
+# Compute GAN feature matching loss given the features of real and fake images in the discriminator network
 class GANLoss(nn.Module):
     def forward(self, x, target_is_real):
         if isinstance(target_is_real, torch.Tensor):

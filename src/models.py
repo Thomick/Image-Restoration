@@ -9,6 +9,8 @@ from dataset import random_degradation
 
 
 # VAE with interwined latent space for real and synthetic images
+# Input: Noisy images (real and synthetic)
+# Output: Reconstructed noisy images
 class VAE1(pl.LightningModule):
     def __init__(self, params):
         super().__init__()
@@ -17,7 +19,7 @@ class VAE1(pl.LightningModule):
         self.discriminator_latent = Discriminator(3, in_channels=64)
         self.params = params
         self.curr_device = None
-        self.loss_vgg = VGGLoss_torch()
+        self.loss_vgg = VGGLoss()
         self.loss_gan = GANLoss()
 
     def forward(self, x):
@@ -129,6 +131,9 @@ class VAE1(pl.LightningModule):
                           nrow=8)
 
 
+# Classic VAE
+# Input: Clean image
+# Output: Reconstructed clean image
 class VAE2(pl.LightningModule):
     def __init__(self, params):
         super().__init__()
@@ -136,7 +141,7 @@ class VAE2(pl.LightningModule):
         self.discriminator = Discriminator()
         self.params = params
         self.curr_device = None
-        self.loss_vgg = VGGLoss_torch()
+        self.loss_vgg = VGGLoss()
         self.loss_gan = GANLoss()
 
     def forward(self, x):
@@ -231,6 +236,7 @@ class VAE2(pl.LightningModule):
                           nrow=8)
 
 
+# Mapping from the latent space of VAE1 to the latent space of VAE2
 class Mapping(pl.LightningModule):
     def __init__(self, vae1_encoder, vae2, params, device="cuda"):
         super().__init__()
@@ -240,7 +246,7 @@ class Mapping(pl.LightningModule):
         self.discriminator = Discriminator()
         self.params = params
         self.curr_device = device
-        self.loss_vgg = VGGLoss_torch()
+        self.loss_vgg = VGGLoss()
         self.loss_gan = GANLoss()
 
     def forward(self, x):

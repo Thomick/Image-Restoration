@@ -29,7 +29,6 @@ def randomGaussianNoise(image):
 def randomColorJitter(image):
     # A bit strange, but it is used in the paper
     delta = np.random.uniform(-20., 20.)
-
     return torch.clamp(image+delta, 0., 255.)
 
 
@@ -45,15 +44,11 @@ random_degradation = transforms.RandomOrder([
     transforms.RandomApply([transforms.Lambda(randomColorJitter)], p=0.7)])
 
 
-# Simple dataset class for loading images from a folder without labels
-# TODO: Rename the class to something more appropriate
-
-
-class PhaseBDataset(Dataset):
+class VanillaDataset(Dataset):
     def __init__(self,
                  data_dir: str,
                  split: str):
-        # TODO :  Add a transform parameter
+        # load images
         self.data_dir = Path(data_dir)
         imgs = sorted(
             [str(f) for f in self.data_dir.iterdir() if f.suffix == '.png'])
@@ -75,7 +70,7 @@ class MappingDataset(Dataset):
     def __init__(self,
                  data_dir: str,
                  split: str):
-        # TODO :  Add a transform parameter
+        # Load images
         self.data_dir = Path(data_dir+"/non_noisy")
         imgs = sorted(
             [str(f) for f in self.data_dir.iterdir() if f.suffix == '.png'])
@@ -98,7 +93,9 @@ class PhaseADataset(Dataset):
     def __init__(self,
                  data_dir: str,
                  split: str):
-        # TODO :  Add a transform parameter
+        # TODO : add a parameter to choose the split ratio
+
+        # Load noisy images
         real_data_dir = Path(data_dir+"/noisy")
         real_imgs = sorted(
             [str(f) for f in real_data_dir.iterdir() if f.suffix == '.png'])
@@ -106,12 +103,14 @@ class PhaseADataset(Dataset):
         real_imgs = real_imgs[:int(
             len(real_imgs) * 0.75)] if split == "train" else real_imgs[int(len(real_imgs) * 0.75):]
 
+        # Load clean images to which we will add synthetic noise
         data_for_synthesis_dir = Path(data_dir+"/non_noisy")
         imgs_for_synthesis = sorted(
             [str(f) for f in data_for_synthesis_dir.iterdir() if f.suffix == '.png'])
         imgs_for_synthesis = imgs_for_synthesis[:int(len(
             imgs_for_synthesis) * 0.75)] if split == "train" else imgs_for_synthesis[int(len(imgs_for_synthesis) * 0.75):]
 
+        # Combine the two sets of images
         self.imgs = [(path, 1.) for path in real_imgs] + [(path, 0.)
                                                           for path in imgs_for_synthesis]
         np.random.shuffle(self.imgs)
@@ -120,18 +119,16 @@ class PhaseADataset(Dataset):
         return len(self.imgs)
 
     def __getitem__(self, idx):
-        # TODO : Add images with synthetic noise
         img = io.read_image(self.imgs[idx][0]).float()
-        if self.imgs[idx][1] == 0.:
+        if self.imgs[idx][1] == 0.:  # if image is clean then we add synthetic noise
             img = random_degradation(img)
         img = data_transform(img)
 
         return img/255, self.imgs[idx][1]
 
 
-# DataModule for the VAE1 model
-# TODO: Rename the class to something more appropriate
-class MyDataModule(LightningDataModule):
+# DataModule for the 3 phases : A, B, Mapping
+class GenericDataModule(LightningDataModule):
 
     def __init__(
         self,
@@ -152,11 +149,16 @@ class MyDataModule(LightningDataModule):
             self.val_dataset = PhaseADataset(self.data_dir, split="val")
             self.train_dataset = PhaseADataset(self.data_dir, split="train")
         elif self.phase == "B":
-            self.val_dataset = PhaseBDataset(self.data_dir, split="val")
-            self.train_dataset = PhaseBDataset(self.data_dir, split="train")
+            self.val_dataset = VanillaDataset(
+                self.data_dir+"/non_noisy", split="val")
+            self.train_dataset = VanillaDataset(
+                self.data_dir+"/non_noisy", split="train")
         elif self.phase == "Mapping":
             self.val_dataset = MappingDataset(self.data_dir, split="val")
             self.train_dataset = MappingDataset(self.data_dir, split="train")
+        elif self.phase == "Vanilla":
+            self.val_dataset = VanillaDataset(self.data_dir, split="val")
+            self.train_dataset = VanillaDataset(self.data_dir, split="train")
         else:
             raise Exception("Invalid phase")
 
