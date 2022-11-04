@@ -19,7 +19,7 @@ DEFAULT_TRAIN_PARAMS = {
     "log_every_n_steps": 1,
     "check_val_every_n_epoch": 50,
     "data_dir": "datasets",
-    "batch_size": 16,
+    "batch_size": 8,
     "log_dir": None,
     "exp_name": None,
 }
@@ -92,6 +92,6 @@ def train_Mapping(hparams, train_params, vae1_ckpt_path, vae2_ckpt_path):
 
 
 if __name__ == "__main__":
-    # train_VAE1(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS)
+    train_VAE1(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS)
     # train_VAE2(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS)
-    train_Mapping(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS, "vae1.ckpt", "vae2.ckpt")
+    # train_Mapping(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS, "vae1.ckpt", "vae2.ckpt")

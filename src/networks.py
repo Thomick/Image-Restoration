@@ -213,10 +213,23 @@ class NonLocalBlock2d(nn.Module):
 
 
 # TODO : Implement Multi-scale discriminator
+class MultiScaleDiscriminator(nn.Module):
+    def __init__(self, num_scales=2, n_layers=3, in_channels=3):
+        super(MultiScaleDiscriminator, self).__init__()
+        self.discriminators = nn.ModuleList(
+            [Discriminator(n_layers, in_channels) for _ in range(num_scales)]
+        )
+
+    def forward(self, x):
+        res = []
+        for net in self.discriminators:
+            res.append(net(x))
+            x = F.avg_pool2d(x, 2)
+        return res
 
 
 class Discriminator(nn.Module):
-    def __init__(self, n_layer=4, in_channels=3):
+    def __init__(self, n_layers=4, in_channels=3):
         super(Discriminator, self).__init__()
         nf = 64
         model = [
@@ -224,7 +237,7 @@ class Discriminator(nn.Module):
                 in_channels, nf, 4, 2, 1, activation=nn.LeakyReLU(0.2), use_norm=False
             )
         ]
-        for _ in range(1, n_layer):
+        for _ in range(1, n_layers):
             nf_prev = nf
             nf = min(nf * 2, 512)
             model += [ConvBlock(nf_prev, nf, 4, 2, 1, activation=nn.LeakyReLU(0.2))]
@@ -295,17 +308,29 @@ class VGGLoss(nn.Module):
         return loss
 
 
-# Compute GAN feature matching loss given the features of real and fake images in the discriminator network
+# Compute GANLoss (MSE between the result of the discriminator and the target)
 class GANLoss(nn.Module):
-    def forward(self, x, target_is_real):
+    def __call__(self, x, target_is_real):
+        if isinstance(x[0], list):
+            return self.multiscale_forward(x, target_is_real)
+        else:
+            return self.single_scale_forward(x, target_is_real)
+
+    def multiscale_forward(self, x, target_is_real):
+        loss = 0
+        for i in range(len(x)):
+            loss += self.single_scale_forward(x[i], target_is_real)
+        return loss
+
+    def single_scale_forward(self, x, target_is_real):
         if isinstance(target_is_real, torch.Tensor):
-            target_tensor = torch.ones_like(x)
+            target_tensor = torch.ones_like(x[-1])
             target_tensor = torch.mul(
                 target_tensor, target_is_real.unsqueeze(-1).unsqueeze(-1)
             )
         elif isinstance(target_is_real, bool):
             target_tensor = (
-                torch.ones_like(x) if target_is_real else torch.zeros_like(x)
+                torch.ones_like(x[-1]) if target_is_real else torch.zeros_like(x[-1])
             )
         else:
             raise ValueError(
@@ -313,4 +338,26 @@ class GANLoss(nn.Module):
                     type(target_is_real)
                 )
             )
-        return F.mse_loss(x, target_tensor)
+        return F.mse_loss(x[-1], target_tensor)
+
+
+class DiscriminatorFeatureLoss:
+    def __call__(self, x, y):
+        if isinstance(x[0], list):
+            return self.multiscale_forward(x, y)
+        else:
+            return self.single_scale_forward(x, y)
+
+    def multiscale_forward(self, x, y):
+        loss = 0
+        for i in range(len(x)):
+            loss += self.single_scale_forward(x[i], y[i])
+        return loss / len(x)
+
+    def single_scale_forward(self, x, y):
+        loss = 0
+        n_layers = len(x)
+        for i in range(n_layers):
+            # times 4 in the original repo
+            loss += F.l1_loss(x[i], y[i])
+        return loss / n_layers
