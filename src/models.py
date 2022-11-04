@@ -6,6 +6,7 @@ import torchvision.utils as vutils
 import torch
 from networks import *  # TODO: Import only the required classes
 from dataset import random_degradation
+from evaluate import save_image
 
 
 # VAE with interwined latent space for real and synthetic images
@@ -37,27 +38,28 @@ class VAE1(pl.LightningModule):
 
             pred_disc_real = self.discriminator(input_img)
             pred_disc_fake = self.discriminator(reconst_img)
-            loss_g_gan = self.loss_gan(
-                pred_disc_fake[-1], target_is_real=True)
-            loss_kl = torch.mean(torch.pow(latent, 2))/2
+            loss_g_gan = self.loss_gan(pred_disc_fake[-1], target_is_real=True)
+            loss_kl = torch.mean(torch.pow(latent, 2)) / 2
             loss_reconst = F.l1_loss(reconst_img, input_img)
             loss_latent_gan = self.loss_gan(
-                self.discriminator_latent(latent)[-1], 1-label)
+                self.discriminator_latent(latent)[-1], 1 - label
+            )
 
             loss_feat_gan = 0
             n_layers = len(pred_disc_real)
             for i in range(n_layers):
                 # times 4 in the original repo
-                loss_feat_gan += F.l1_loss(
-                    pred_disc_real[i], pred_disc_fake[i])
+                loss_feat_gan += F.l1_loss(pred_disc_real[i], pred_disc_fake[i])
             loss_feat_gan /= n_layers
 
             loss_vgg = self.loss_vgg(reconst_img, input_img)
-            vae_loss = loss_kl + \
-                self.params["a_reconst"] * loss_reconst + loss_g_gan + \
-                loss_latent_gan + \
-                (loss_vgg +
-                 loss_feat_gan)*self.params["lambda2_feat"]
+            vae_loss = (
+                loss_kl
+                + self.params["a_reconst"] * loss_reconst
+                + loss_g_gan
+                + loss_latent_gan
+                + (loss_vgg + loss_feat_gan) * self.params["lambda2_feat"]
+            )
 
             self.log("vae1_loss", vae_loss, prog_bar=True)
             self.log("loss_g_gan", loss_g_gan, prog_bar=True)
@@ -71,22 +73,22 @@ class VAE1(pl.LightningModule):
         # train discriminator
         if optimizer_idx == 1:
 
-            real_loss = self.loss_gan(self.discriminator(
-                input_img)[-1], target_is_real=True)
+            real_loss = self.loss_gan(
+                self.discriminator(input_img)[-1], target_is_real=True
+            )
 
             fake_loss = self.loss_gan(
-                self.discriminator(reconst_img)[-1], target_is_real=False)
+                self.discriminator(reconst_img)[-1], target_is_real=False
+            )
 
             d_loss = (real_loss + fake_loss) / 2
             self.log("d_loss", d_loss, prog_bar=True)
             return d_loss
 
         # train discriminator for the latent space
-        # TODO : Verify if we use some kind of feature matching here
         if optimizer_idx == 2:
 
-            d_latent_loss = self.loss_gan(
-                self.discriminator_latent(latent)[-1], label)
+            d_latent_loss = self.loss_gan(self.discriminator_latent(latent)[-1], label)
 
             self.log("d_latent_loss", d_latent_loss, prog_bar=True)
             return d_latent_loss
@@ -96,12 +98,11 @@ class VAE1(pl.LightningModule):
         b1 = self.params["b1"]
         b2 = self.params["b2"]
 
-        opt_vae = torch.optim.Adam(
-            self.vae.parameters(), lr=lr, betas=(b1, b2))
-        opt_d = torch.optim.Adam(
-            self.discriminator.parameters(), lr=lr, betas=(b1, b2))
+        opt_vae = torch.optim.Adam(self.vae.parameters(), lr=lr, betas=(b1, b2))
+        opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=lr, betas=(b1, b2))
         opt_d_latent = torch.optim.Adam(
-            self.discriminator_latent.parameters(), lr=lr, betas=(b1, b2))
+            self.discriminator_latent.parameters(), lr=lr, betas=(b1, b2)
+        )
         return [opt_vae, opt_d, opt_d_latent], []
 
     def validation_step(self, batch, batch_idx):
@@ -117,18 +118,24 @@ class VAE1(pl.LightningModule):
         test_input, _ = next(iter(self.trainer.datamodule.test_dataloader()))
         test_input = test_input.to(self.curr_device)
 
-        #test_input, test_label = batch
+        # test_input, test_label = batch
         recons = self.vae.decode(self.vae.encode(test_input))
-        vutils.save_image(recons.data,
-                          os.path.join(self.logger.log_dir,
-                                       "Reconstructions",
-                                       f"recons_{self.logger.name}_Epoch_{self.current_epoch}.png"),
-                          nrow=8)
-        vutils.save_image(test_input.data,
-                          os.path.join(self.logger.log_dir,
-                                       "Input",
-                                       f"input_{self.logger.name}_Epoch_{self.current_epoch}.png"),
-                          nrow=8)
+        save_image(
+            recons.data,
+            os.path.join(
+                self.logger.log_dir,
+                "Reconstructions",
+                f"recons_{self.logger.name}_Epoch_{self.current_epoch}.png",
+            ),
+        )
+        save_image(
+            test_input.data,
+            os.path.join(
+                self.logger.log_dir,
+                "Input",
+                f"input_{self.logger.name}_Epoch_{self.current_epoch}.png",
+            ),
+        )
 
 
 # Classic VAE
@@ -158,25 +165,25 @@ class VAE2(pl.LightningModule):
 
             pred_disc_real = self.discriminator(real_img)
             pred_disc_fake = self.discriminator(reconst_img)
-            loss_g_gan = self.loss_gan(
-                pred_disc_fake[-1], target_is_real=True)
+            loss_g_gan = self.loss_gan(pred_disc_fake[-1], target_is_real=True)
 
-            loss_kl = torch.mean(torch.pow(latent, 2))/2
+            loss_kl = torch.mean(torch.pow(latent, 2)) / 2
             loss_reconst = F.l1_loss(reconst_img, real_img)
 
             loss_feat_gan = 0
             n_layers = len(pred_disc_real)
             for i in range(n_layers):
                 # times 4 in the original repo
-                loss_feat_gan += F.l1_loss(
-                    pred_disc_real[i], pred_disc_fake[i])
+                loss_feat_gan += F.l1_loss(pred_disc_real[i], pred_disc_fake[i])
             loss_feat_gan /= n_layers
 
             loss_vgg = self.loss_vgg(reconst_img, real_img)
-            vae_loss = loss_kl + \
-                self.params["a_reconst"] * loss_reconst + loss_g_gan + \
-                (loss_vgg +
-                 loss_feat_gan)*self.params["lambda2_feat"]
+            vae_loss = (
+                loss_kl
+                + self.params["a_reconst"] * loss_reconst
+                + loss_g_gan
+                + (loss_vgg + loss_feat_gan) * self.params["lambda2_feat"]
+            )
 
             self.log("vae2_loss", vae_loss, prog_bar=True)
             self.log("w", loss_g_gan, prog_bar=True)
@@ -188,25 +195,25 @@ class VAE2(pl.LightningModule):
 
         # train discriminator to distinguish real and reconstructed images (1=real, 0=recoonstructed)
         if optimizer_idx == 1:
-            real_loss = self.loss_gan(self.discriminator(
-                real_img)[-1], target_is_real=True)
+            real_loss = self.loss_gan(
+                self.discriminator(real_img)[-1], target_is_real=True
+            )
 
             fake_loss = self.loss_gan(
-                self.discriminator(reconst_img)[-1], target_is_real=False)
+                self.discriminator(reconst_img)[-1], target_is_real=False
+            )
 
             d_loss = (real_loss + fake_loss) / 2
             self.log("d_loss", d_loss, prog_bar=True)
             return d_loss
 
     def configure_optimizers(self):
-        lr = self.params['lr']
-        b1 = self.params['b1']
-        b2 = self.params['b2']
+        lr = self.params["lr"]
+        b1 = self.params["b1"]
+        b2 = self.params["b2"]
 
-        opt_vae = torch.optim.Adam(
-            self.vae.parameters(), lr=lr, betas=(b1, b2))
-        opt_d = torch.optim.Adam(
-            self.discriminator.parameters(), lr=lr, betas=(b1, b2))
+        opt_vae = torch.optim.Adam(self.vae.parameters(), lr=lr, betas=(b1, b2))
+        opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=lr, betas=(b1, b2))
         return [opt_vae, opt_d], []
 
     def validation_step(self, batch, batch_idx):
@@ -222,18 +229,24 @@ class VAE2(pl.LightningModule):
         test_input, _ = next(iter(self.trainer.datamodule.test_dataloader()))
         test_input = test_input.to(self.curr_device)
 
-        #test_input, test_label = batch
+        # test_input, test_label = batch
         recons = self.vae.decode(self.vae.encode(test_input))
-        vutils.save_image(recons.data,
-                          os.path.join(self.logger.log_dir,
-                                       "Reconstructions",
-                                       f"recons_{self.logger.name}_Epoch_{self.current_epoch}.png"),
-                          nrow=8)
-        vutils.save_image(test_input.data,
-                          os.path.join(self.logger.log_dir,
-                                       "Input",
-                                       f"input_{self.logger.name}_Epoch_{self.current_epoch}.png"),
-                          nrow=8)
+        save_image(
+            recons.data,
+            os.path.join(
+                self.logger.log_dir,
+                "Reconstructions",
+                f"recons_{self.logger.name}_Epoch_{self.current_epoch}.png",
+            ),
+        )
+        save_image(
+            test_input.data,
+            os.path.join(
+                self.logger.log_dir,
+                "Input",
+                f"input_{self.logger.name}_Epoch_{self.current_epoch}.png",
+            ),
+        )
 
 
 # Mapping from the latent space of VAE1 to the latent space of VAE2
@@ -269,20 +282,20 @@ class Mapping(pl.LightningModule):
 
             pred_disc_real = self.discriminator(restored)
             pred_disc_fake = self.discriminator(denoised)
-            loss_g_gan = self.loss_gan(
-                pred_disc_fake[-1], target_is_real=True)
+            loss_g_gan = self.loss_gan(pred_disc_fake[-1], target_is_real=True)
             loss_feat_gan = 0
             n_layers = len(pred_disc_real)
             for i in range(n_layers):
                 # times 4 in the original repo
-                loss_feat_gan += F.l1_loss(
-                    pred_disc_real[i], pred_disc_fake[i])
+                loss_feat_gan += F.l1_loss(pred_disc_real[i], pred_disc_fake[i])
             loss_feat_gan /= n_layers
 
             loss_vgg = self.loss_vgg(denoised, restored)
-            mapping_loss = self.params["lambda1_recons"] * latent_loss + loss_g_gan + \
-                (loss_vgg +
-                 loss_feat_gan)*self.params["lambda2_feat"]
+            mapping_loss = (
+                self.params["lambda1_recons"] * latent_loss
+                + loss_g_gan
+                + (loss_vgg + loss_feat_gan) * self.params["lambda2_feat"]
+            )
             self.log("latent_loss", latent_loss, prog_bar=True)
             self.log("loss_g_gan", loss_g_gan, prog_bar=True)
             self.log("mapping_loss", mapping_loss, prog_bar=True)
@@ -304,14 +317,12 @@ class Mapping(pl.LightningModule):
             return d_loss
 
     def configure_optimizers(self):
-        lr = self.params['lr']
-        b1 = self.params['b1']
-        b2 = self.params['b2']
+        lr = self.params["lr"]
+        b1 = self.params["b1"]
+        b2 = self.params["b2"]
 
-        opt_mapping = torch.optim.Adam(
-            self.mapping.parameters(), lr=lr, betas=(b1, b2))
-        opt_d = torch.optim.Adam(
-            self.discriminator.parameters(), lr=lr, betas=(b1, b2))
+        opt_mapping = torch.optim.Adam(self.mapping.parameters(), lr=lr, betas=(b1, b2))
+        opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=lr, betas=(b1, b2))
         return [opt_mapping, opt_d], []
 
     def validation_step(self, batch, batch_idx):
@@ -327,20 +338,29 @@ class Mapping(pl.LightningModule):
         clean_input = test_input[:, 0, :, :, :].to(self.curr_device)
         noisy_input = test_input[:, 1, :, :, :].to(self.curr_device)
 
-        #test_input, test_label = batch
+        # test_input, test_label = batch
         recons, _, _ = self(noisy_input)
-        vutils.save_image(recons.data,
-                          os.path.join(self.logger.log_dir,
-                                       "Results",
-                                       f"result_{self.logger.name}_Epoch_{self.current_epoch}.png"),
-                          nrow=8)
-        vutils.save_image(clean_input.data,
-                          os.path.join(self.logger.log_dir,
-                                       "Clean_input",
-                                       f"clean_{self.logger.name}_Epoch_{self.current_epoch}.png"),
-                          nrow=8)
-        vutils.save_image(noisy_input.data,
-                          os.path.join(self.logger.log_dir,
-                                       "Noisy_input",
-                                       f"noisy_{self.logger.name}_Epoch_{self.current_epoch}.png"),
-                          nrow=8)
+        save_image(
+            recons.data,
+            os.path.join(
+                self.logger.log_dir,
+                "Results",
+                f"result_{self.logger.name}_Epoch_{self.current_epoch}.png",
+            ),
+        )
+        save_image(
+            clean_input.data,
+            os.path.join(
+                self.logger.log_dir,
+                "Clean_input",
+                f"clean_{self.logger.name}_Epoch_{self.current_epoch}.png",
+            ),
+        )
+        save_image(
+            noisy_input.data,
+            os.path.join(
+                self.logger.log_dir,
+                "Noisy_input",
+                f"noisy_{self.logger.name}_Epoch_{self.current_epoch}.png",
+            ),
+        )

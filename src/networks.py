@@ -14,15 +14,13 @@ class VAE(nn.Module):
         hidden_channel_dim = 64
 
         encoder = [
-            ConvBlock(3, hidden_channel_dim, 7, 1, 'same', activation),
-            ConvBlock(hidden_channel_dim, hidden_channel_dim,
-                      4, 2, 1, activation),
-            ConvBlock(hidden_channel_dim, hidden_channel_dim,
-                      4, 2, 1, activation),
+            ConvBlock(3, hidden_channel_dim, 7, 1, "same", activation),
+            ConvBlock(hidden_channel_dim, hidden_channel_dim, 4, 2, 1, activation),
+            ConvBlock(hidden_channel_dim, hidden_channel_dim, 4, 2, 1, activation),
             ResBlock(hidden_channel_dim),
             ResBlock(hidden_channel_dim),
             ResBlock(hidden_channel_dim),
-            ResBlock(hidden_channel_dim)
+            ResBlock(hidden_channel_dim),
         ]
         self.encoder = nn.Sequential(*encoder)
 
@@ -33,7 +31,7 @@ class VAE(nn.Module):
             ResBlock(hidden_channel_dim),
             DeconvBlock(64, 64, 4, 2, 1, activation),
             DeconvBlock(64, 64, 4, 2, 1, activation),
-            nn.Conv2d(64, 3, 7, 1, 'same')
+            nn.Conv2d(64, 3, 7, 1, "same"),
         ]
         self.decoder = nn.Sequential(*decoder)
 
@@ -47,13 +45,22 @@ class VAE(nn.Module):
         latent = self.encode(x)
         # Assume that the latent distributions are Gaussian with means = latent and variances = 1
         eps = torch.randn_like(latent)
-        x_reconst = self.decode(latent+eps)  # Reparameterization trick
+        x_reconst = self.decode(latent + eps)  # Reparameterization trick
         return x_reconst, latent
 
 
 # ConvBlock is a convolutional layer followed by a normalization layer(optional) and an activation function
 class ConvBlock(nn.Sequential):
-    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, activation=nn.ReLU(), use_norm=True):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride,
+        padding,
+        activation=nn.ReLU(),
+        use_norm=True,
+    ):
         model = [
             nn.Conv2d(
                 in_channels,
@@ -61,7 +68,8 @@ class ConvBlock(nn.Sequential):
                 kernel_size,
                 stride,
                 padding,
-            )]
+            )
+        ]
         if use_norm:
             model += [nn.InstanceNorm2d(out_channels)]
         model += [activation]
@@ -70,7 +78,16 @@ class ConvBlock(nn.Sequential):
 
 # DeconvBlock is a transposed convolutional layer followed by a normalization layer(optional) and an activation function
 class DeconvBlock(nn.Sequential):
-    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, activation=nn.ReLU(), use_norm=True):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride,
+        padding,
+        activation=nn.ReLU(),
+        use_norm=True,
+    ):
         model = [
             nn.ConvTranspose2d(
                 in_channels,
@@ -78,11 +95,13 @@ class DeconvBlock(nn.Sequential):
                 kernel_size,
                 stride,
                 padding,
-            )]
+            )
+        ]
         if use_norm:
             model += [nn.InstanceNorm2d(out_channels)]
         model += [activation]
         super(DeconvBlock, self).__init__(*model)
+
 
 # ResBlock is a residual block with two convolutional layers
 
@@ -90,10 +109,9 @@ class DeconvBlock(nn.Sequential):
 class ResBlock(nn.Module):
     def __init__(self, dim, activation=nn.ReLU()):
         super(ResBlock, self).__init__()
-        # TODO : Verify the ResBlock network structure
         model = [
-            ConvBlock(dim, dim, 3, 1, 'same', activation),
-            ConvBlock(dim, dim, 3, 1, 'same', activation)
+            ConvBlock(dim, dim, 3, 1, "same", activation),
+            ConvBlock(dim, dim, 3, 1, "same", activation),
         ]
         self.conv_block = nn.Sequential(*model)
 
@@ -111,10 +129,7 @@ class MappingNetwork(nn.Module):
             ConvBlock(128, 256, 3, 1, 1),
             ConvBlock(256, 512, 3, 1, 1),
         ]
-        global_branch = [
-            NonLocalBlock2d(512),
-            ResBlock(512),
-            ResBlock(512)]
+        global_branch = [NonLocalBlock2d(512), ResBlock(512), ResBlock(512)]
         model_to_latent = [
             ResBlock(512),
             ResBlock(512),
@@ -124,9 +139,9 @@ class MappingNetwork(nn.Module):
             ResBlock(512),
             ConvBlock(512, 256, 3, 1, 1),
             ConvBlock(256, 128, 3, 1, 1),
-            ConvBlock(128, 64, 3, 1, 1)]
-        self.model = nn.Sequential(
-            *model_from_latent, *global_branch, *model_to_latent)
+            ConvBlock(128, 64, 3, 1, 1),
+        ]
+        self.model = nn.Sequential(*model_from_latent, *global_branch, *model_to_latent)
 
     def forward(self, x):
         return self.model(x)
@@ -143,17 +158,39 @@ class NonLocalBlock2d(nn.Module):
         if self.inter_channels is None:
             self.inter_channels = in_channels // 2
 
-        self.g = nn.Conv2d(in_channels=self.in_channels,
-                           out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
-        self.phi = nn.Conv2d(in_channels=self.in_channels,
-                             out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
-        self.theta = nn.Conv2d(in_channels=self.in_channels,
-                               out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
-        self.w = nn.Conv2d(in_channels=self.inter_channels,
-                           out_channels=self.in_channels, kernel_size=1, stride=1, padding=0)
-        self.resblock = nn.Sequential(ResBlock(self.in_channels),
-                                      ResBlock(self.in_channels),
-                                      ResBlock(self.in_channels))
+        self.g = nn.Conv2d(
+            in_channels=self.in_channels,
+            out_channels=self.inter_channels,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+        )
+        self.phi = nn.Conv2d(
+            in_channels=self.in_channels,
+            out_channels=self.inter_channels,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+        )
+        self.theta = nn.Conv2d(
+            in_channels=self.in_channels,
+            out_channels=self.inter_channels,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+        )
+        self.w = nn.Conv2d(
+            in_channels=self.inter_channels,
+            out_channels=self.in_channels,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+        )
+        self.resblock = nn.Sequential(
+            ResBlock(self.in_channels),
+            ResBlock(self.in_channels),
+            ResBlock(self.in_channels),
+        )
 
     def forward(self, x):
         g_x = self.g(x).view(x.size(0), self.inter_channels, -1)
@@ -166,10 +203,14 @@ class NonLocalBlock2d(nn.Module):
         f_div_C = F.softmax(f, dim=-1)
         y = torch.matmul(f_div_C, g_x)
 
-        w_y = self.w(y.permute(0, 2, 1).contiguous().view(
-            x.size(0), self.inter_channels, *x.size()[2:]))
+        w_y = self.w(
+            y.permute(0, 2, 1)
+            .contiguous()
+            .view(x.size(0), self.inter_channels, *x.size()[2:])
+        )
         z = self.resblock(w_y + x)
         return z
+
 
 # TODO : Implement Multi-scale discriminator
 
@@ -179,16 +220,19 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
         nf = 64
         model = [
-            ConvBlock(in_channels, nf, 4, 2, 1, activation=nn.LeakyReLU(0.2), use_norm=False)]
+            ConvBlock(
+                in_channels, nf, 4, 2, 1, activation=nn.LeakyReLU(0.2), use_norm=False
+            )
+        ]
         for _ in range(1, n_layer):
             nf_prev = nf
             nf = min(nf * 2, 512)
-            model += [ConvBlock(nf_prev, nf, 4, 2, 1,
-                                activation=nn.LeakyReLU(0.2))]
+            model += [ConvBlock(nf_prev, nf, 4, 2, 1, activation=nn.LeakyReLU(0.2))]
 
-        model += [ConvBlock(nf, nf, 4, 1, 1, activation=nn.LeakyReLU(0.2)),
-                  nn.Conv2d(nf, 1, 4, 1, 1)
-                  ]
+        model += [
+            ConvBlock(nf, nf, 4, 1, 1, activation=nn.LeakyReLU(0.2)),
+            nn.Conv2d(nf, 1, 4, 1, 1),
+        ]
         self.model = nn.Sequential(*model)
 
     def forward(self, x):
@@ -204,7 +248,8 @@ class VGG19_torch(torch.nn.Module):
     def __init__(self, requires_grad=False):
         super(VGG19_torch, self).__init__()
         vgg_pretrained_features = models.vgg19(
-            weights=models.VGG19_Weights.DEFAULT).features
+            weights=models.VGG19_Weights.DEFAULT
+        ).features
         self.slice1 = torch.nn.Sequential()
         self.slice2 = torch.nn.Sequential()
         self.slice3 = torch.nn.Sequential()
@@ -240,14 +285,13 @@ class VGGLoss(nn.Module):
         super(VGGLoss, self).__init__()
         self.vgg = VGG19_torch()
         self.criterion = nn.L1Loss()
-        self.weights = [1.0/32, 1.0/16, 1.0/8, 1.0/4, 1.0]
+        self.weights = [1.0 / 32, 1.0 / 16, 1.0 / 8, 1.0 / 4, 1.0]
 
     def forward(self, x, y):
         x_vgg, y_vgg = self.vgg(x), self.vgg(y)
         loss = 0
         for i in range(len(x_vgg)):
-            loss += self.weights[i] * \
-                self.criterion(x_vgg[i], y_vgg[i].detach())
+            loss += self.weights[i] * self.criterion(x_vgg[i], y_vgg[i].detach())
         return loss
 
 
@@ -257,11 +301,16 @@ class GANLoss(nn.Module):
         if isinstance(target_is_real, torch.Tensor):
             target_tensor = torch.ones_like(x)
             target_tensor = torch.mul(
-                target_tensor, target_is_real.unsqueeze(-1).unsqueeze(-1))
+                target_tensor, target_is_real.unsqueeze(-1).unsqueeze(-1)
+            )
         elif isinstance(target_is_real, bool):
-            target_tensor = torch.ones_like(
-                x) if target_is_real else torch.zeros_like(x)
+            target_tensor = (
+                torch.ones_like(x) if target_is_real else torch.zeros_like(x)
+            )
         else:
             raise ValueError(
-                "target_is_real should be either Tensor or bool, but got {}".format(type(target_is_real)))
+                "target_is_real should be either Tensor or bool, but got {}".format(
+                    type(target_is_real)
+                )
+            )
         return F.mse_loss(x, target_tensor)
