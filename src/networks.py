@@ -212,7 +212,6 @@ class NonLocalBlock2d(nn.Module):
         return z
 
 
-# TODO : Implement Multi-scale discriminator
 class MultiScaleDiscriminator(nn.Module):
     def __init__(self, num_scales=2, n_layers=3, in_channels=3):
         super(MultiScaleDiscriminator, self).__init__()

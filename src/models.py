@@ -15,7 +15,6 @@ from networks import (
 from utils import save_image
 
 
-# TODO : Remove the losses from the progress bar
 # TODO : Use Multi-Scale Discriminator and add specific parameters for it
 
 # VAE with interwined latent space for real and synthetic images
@@ -67,10 +66,10 @@ class VAE1(pl.LightningModule):
             )
 
             self.log("vae1_loss", vae_loss, prog_bar=True)
-            self.log("loss_g_gan", loss_g_gan, prog_bar=True)
-            self.log("loss_latent_gan", loss_latent_gan, prog_bar=True)
-            self.log("loss_kl", loss_kl, prog_bar=True)
-            self.log("loss_reconst", loss_reconst, prog_bar=True)
+            self.log("loss_g_gan", loss_g_gan)
+            self.log("loss_latent_gan", loss_latent_gan)
+            self.log("loss_kl", loss_kl)
+            self.log("loss_reconst", loss_reconst)
             self.log("loss_feat_gan", loss_feat_gan)
             self.log("loss_vgg", loss_vgg)
             return vae_loss
@@ -185,9 +184,9 @@ class VAE2(pl.LightningModule):
             )
 
             self.log("vae2_loss", vae_loss, prog_bar=True)
-            self.log("loss_g_gan", loss_g_gan, prog_bar=True)
-            self.log("loss_kl", loss_kl, prog_bar=True)
-            self.log("loss_reconst", loss_reconst, prog_bar=True)
+            self.log("loss_g_gan", loss_g_gan)
+            self.log("loss_kl", loss_kl)
+            self.log("loss_reconst", loss_reconst)
             self.log("loss_feat_gan", loss_feat_gan)
             self.log("loss_vgg", loss_vgg)
             return vae_loss
@@ -288,8 +287,8 @@ class Mapping(pl.LightningModule):
                 + loss_g_gan
                 + (loss_vgg + loss_feat_gan) * self.params["lambda2_feat"]
             )
-            self.log("latent_loss", latent_loss, prog_bar=True)
-            self.log("loss_g_gan", loss_g_gan, prog_bar=True)
+            self.log("latent_loss", latent_loss)
+            self.log("loss_g_gan", loss_g_gan)
             self.log("mapping_loss", mapping_loss, prog_bar=True)
             self.log("loss_feat_gan", loss_feat_gan)
             self.log("loss_vgg", loss_vgg)
