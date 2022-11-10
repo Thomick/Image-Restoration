@@ -31,6 +31,7 @@ class VAE1(pl.LightningModule):
         self.loss_vgg = VGGLoss()
         self.loss_gan = GANLoss()
         self.loss_feat_gan = DiscriminatorFeatureLoss()
+        self.save_hyperparameters()
 
     def forward(self, x):
         return self.vae(x)
@@ -155,6 +156,7 @@ class VAE2(pl.LightningModule):
         self.loss_vgg = VGGLoss()
         self.loss_gan = GANLoss()
         self.loss_feat_gan = DiscriminatorFeatureLoss()
+        self.save_hyperparameters()
 
     def forward(self, x):
         return self.vae(x)
@@ -247,7 +249,7 @@ class VAE2(pl.LightningModule):
 
 # Mapping from the latent space of VAE1 to the latent space of VAE2
 class Mapping(pl.LightningModule):
-    def __init__(self, vae1_encoder, vae2, params):
+    def __init__(self, params, vae1_encoder, vae2):
         super().__init__()
         self.vae1_encoder = vae1_encoder
         self.vae2 = vae2
@@ -257,6 +259,7 @@ class Mapping(pl.LightningModule):
         self.loss_vgg = VGGLoss()
         self.loss_gan = GANLoss()
         self.loss_feat_gan = DiscriminatorFeatureLoss()
+        self.save_hyperparameters(ignore=["vae1_encoder", "vae2"])
 
     def forward(self, x):
         latent1 = self.vae1_encoder(x)

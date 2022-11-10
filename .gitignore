@@ -2,4 +2,4 @@ datasets/*
 lightning_logs/*
 *.pyc
 *.ckpt
-*vis/*
+*vis*/*

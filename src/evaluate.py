@@ -15,6 +15,7 @@ params = {
     "lambda1": 60,
 }
 
+# TODO: Remove params from the checkpoint loading (try two step initialization)
 
 # Load a checkpoint of VAE1 and visualize the results on one batch of either the train or validation set
 def visualize_VAE1(dataset="train"):
@@ -49,7 +50,7 @@ def visualize_VAE2(dataset="train"):
         "vae2.ckpt", params=params, device=device
     ).to(device)
 
-    data_module = GenericDataModule("datasets/non_noisy", batch_size=32, phase="B")
+    data_module = GenericDataModule("datasets", batch_size=32, phase="B")
     data_module.setup()
     if dataset == "train":
         dataloader = data_module.train_dataloader()
@@ -75,7 +76,7 @@ def visualize_full(dataset="train"):
     ).vae.encoder
     vae2 = VAE2.load_from_checkpoint("vae2.ckpt", params=params, device="cpu").vae
     full_model = Mapping.load_from_checkpoint(
-        "full.ckpt", vae1_encoder=vae1_encoder, vae2=vae2, params=params, device=device
+        "full.ckpt", params=params, vae1_encoder=vae1_encoder, vae2=vae2, device=device
     ).to(device)
     visualize_full_synth(dataset, full_model)
     visualize_full_real(dataset, full_model)
@@ -124,6 +125,6 @@ def visualize_full_real(dataset="train", full_model=None):
 
 
 if __name__ == "__main__":
-    # visualize_full()
-    visualize_VAE1()
-    visualize_VAE2()
+    visualize_full(dataset="val")
+    visualize_VAE1(dataset="val")
+    visualize_VAE2(dataset="val")
