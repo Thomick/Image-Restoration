@@ -66,13 +66,13 @@ class VAE1(pl.LightningModule):
                 + (loss_vgg + loss_feat_gan) * self.params["lambda2_feat"]
             )
 
-            self.log("vae1_loss", vae_loss, prog_bar=True)
-            self.log("loss_g_gan", loss_g_gan)
-            self.log("loss_latent_gan", loss_latent_gan)
-            self.log("loss_kl", loss_kl)
-            self.log("loss_reconst", loss_reconst)
-            self.log("loss_feat_gan", loss_feat_gan)
-            self.log("loss_vgg", loss_vgg)
+            self.log("vae1_loss", vae_loss, prog_bar=True, on_step=False, on_epoch=True)
+            self.log("loss_g_gan", loss_g_ganv, on_step=False, on_epoch=True)
+            self.log("loss_latent_gan", loss_latent_gan, on_step=False, on_epoch=True)
+            self.log("loss_kl", loss_kl, on_step=False, on_epoch=True)
+            self.log("loss_reconst", loss_reconst, on_step=False, on_epoch=True)
+            self.log("loss_feat_gan", loss_feat_gan, on_step=False, on_epoch=True)
+            self.log("loss_vgg", loss_vgg, on_step=False, on_epoch=True)
             return vae_loss
 
         # train discriminator
@@ -87,7 +87,7 @@ class VAE1(pl.LightningModule):
             )
 
             d_loss = (real_loss + fake_loss) / 2
-            self.log("d_loss", d_loss, prog_bar=True)
+            self.log("d_loss", d_loss, prog_bar=True, on_step=False, on_epoch=True)
             return d_loss
 
         # train discriminator for the latent space
@@ -95,7 +95,13 @@ class VAE1(pl.LightningModule):
 
             d_latent_loss = self.loss_gan(self.discriminator_latent(latent), label)
 
-            self.log("d_latent_loss", d_latent_loss, prog_bar=True)
+            self.log(
+                "d_latent_loss",
+                d_latent_loss,
+                prog_bar=True,
+                on_step=False,
+                on_epoch=True,
+            )
             return d_latent_loss
 
     def configure_optimizers(self):
@@ -185,12 +191,12 @@ class VAE2(pl.LightningModule):
                 + (loss_vgg + loss_feat_gan) * self.params["lambda2_feat"]
             )
 
-            self.log("vae2_loss", vae_loss, prog_bar=True)
-            self.log("loss_g_gan", loss_g_gan)
-            self.log("loss_kl", loss_kl)
-            self.log("loss_reconst", loss_reconst)
-            self.log("loss_feat_gan", loss_feat_gan)
-            self.log("loss_vgg", loss_vgg)
+            self.log("vae2_loss", vae_loss, prog_bar=True, on_step=False, on_epoch=True)
+            self.log("loss_g_gan", loss_g_gan, on_step=False, on_epoch=True)
+            self.log("loss_kl", loss_kl, on_step=False, on_epoch=True)
+            self.log("loss_reconst", loss_reconst, on_step=False, on_epoch=True)
+            self.log("loss_feat_gan", loss_feat_gan, on_step=False, on_epoch=True)
+            self.log("loss_vgg", loss_vgg, on_step=False, on_epoch=True)
             return vae_loss
 
         # train discriminator to distinguish real and reconstructed images (1=real, 0=recoonstructed)
@@ -202,7 +208,7 @@ class VAE2(pl.LightningModule):
             )
 
             d_loss = (real_loss + fake_loss) / 2
-            self.log("d_loss", d_loss, prog_bar=True)
+            self.log("d_loss", d_loss, prog_bar=True, on_step=False, on_epoch=True)
             return d_loss
 
     def configure_optimizers(self):
@@ -290,11 +296,17 @@ class Mapping(pl.LightningModule):
                 + loss_g_gan
                 + (loss_vgg + loss_feat_gan) * self.params["lambda2_feat"]
             )
-            self.log("latent_loss", latent_loss)
-            self.log("loss_g_gan", loss_g_gan)
-            self.log("mapping_loss", mapping_loss, prog_bar=True)
-            self.log("loss_feat_gan", loss_feat_gan)
-            self.log("loss_vgg", loss_vgg)
+            self.log("latent_loss", latent_loss, on_step=False, on_epoch=True)
+            self.log("loss_g_gan", loss_g_gan, on_step=False, on_epoch=True)
+            self.log(
+                "mapping_loss",
+                mapping_loss,
+                prog_bar=True,
+                on_step=False,
+                on_epoch=True,
+            )
+            self.log("loss_feat_gan", loss_feat_gan, on_step=False, on_epoch=True)
+            self.log("loss_vgg", loss_vgg, on_step=False, on_epoch=True)
             return mapping_loss
 
         # train discriminator to distinguish real and reconstructed images (1=real, 0=recoonstructed)
@@ -307,7 +319,7 @@ class Mapping(pl.LightningModule):
             fake_loss = self.loss_gan(self.discriminator(denoised), False)
 
             d_loss = (real_loss + fake_loss) / 2
-            self.log("d_loss", d_loss, prog_bar=True)
+            self.log("d_loss", d_loss, prog_bar=True, on_step=False, on_epoch=True)
             return d_loss
 
     def configure_optimizers(self):
