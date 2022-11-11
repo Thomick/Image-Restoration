@@ -32,6 +32,7 @@ class VAENetwork(nn.Module):
             DeconvBlock(64, 64, 4, 2, 1, activation),
             DeconvBlock(64, 64, 4, 2, 1, activation),
             nn.Conv2d(64, 3, 7, 1, "same"),
+            nn.Tanh(),
         ]
         self.decoder = nn.Sequential(*decoder)
 

@@ -7,6 +7,10 @@ from pathlib import Path
 import numpy as np
 
 
+def rescale_colors(image):
+    return 2 * image / 255.0 - 1.0
+
+
 def randomJPEGcompression(image):
     qf = np.random.randint(40, 100)
     res = io.decode_jpeg(io.encode_jpeg(image.type(torch.uint8), qf)).type_as(image)
@@ -66,7 +70,7 @@ class VanillaDataset(Dataset):
         img = io.read_image(self.imgs[idx]).float()
         img = data_transform(img)
 
-        return img / 255, 0.0
+        return rescale_colors(img), 0.0
 
 
 class MappingDataset(Dataset):
@@ -89,7 +93,7 @@ class MappingDataset(Dataset):
         img = data_transform(img)
         noisy_img = random_degradation(img)
 
-        return torch.stack([img / 255, noisy_img / 255]), 0.0
+        return torch.stack([rescale_colors(img), rescale_colors(noisy_img)]), 0.0
 
 
 class PhaseADataset(Dataset):
@@ -134,7 +138,7 @@ class PhaseADataset(Dataset):
             img = random_degradation(img)
         img = data_transform(img)
 
-        return img / 255, self.imgs[idx][1]
+        return rescale_colors(img), self.imgs[idx][1]
 
 
 # DataModule for the 3 phases : A, B, Mapping
