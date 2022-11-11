@@ -105,8 +105,6 @@ class DeconvBlock(nn.Sequential):
 
 
 # ResBlock is a residual block with two convolutional layers
-
-
 class ResBlock(nn.Module):
     def __init__(self, dim, activation=nn.ReLU()):
         super(ResBlock, self).__init__()
@@ -214,10 +212,10 @@ class NonLocalBlock2d(nn.Module):
 
 
 class MultiScaleDiscriminator(nn.Module):
-    def __init__(self, num_scales=2, n_layers=3, in_channels=3):
+    def __init__(self, n_scales=2, n_layers=4, in_channels=3):
         super(MultiScaleDiscriminator, self).__init__()
         self.discriminators = nn.ModuleList(
-            [Discriminator(n_layers, in_channels) for _ in range(num_scales)]
+            [Discriminator(n_layers, in_channels) for _ in range(n_scales)]
         )
 
     def forward(self, x):
@@ -317,10 +315,12 @@ class GANLoss(nn.Module):
             return self.single_scale_forward(x, target_is_real)
 
     def multiscale_forward(self, x, target_is_real):
+        # average loss over scales (loss are just summed in the original implementation)
         loss = 0
-        for i in range(len(x)):
+        n_scales = len(x)
+        for i in range(n_scales):
             loss += self.single_scale_forward(x[i], target_is_real)
-        return loss
+        return loss / n_scales
 
     def single_scale_forward(self, x, target_is_real):
         if isinstance(target_is_real, torch.Tensor):

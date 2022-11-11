@@ -7,15 +7,13 @@ import torch.nn.functional as F
 from networks import (
     VAENetwork,
     MappingNetwork,
-    Discriminator,
+    MultiScaleDiscriminator,
     VGGLoss,
     GANLoss,
     DiscriminatorFeatureLoss,
 )
 from utils import save_image
 
-
-# TODO : Use Multi-Scale Discriminator and add specific parameters for it
 
 # VAE with interwined latent space for real and synthetic images
 # Input: Noisy images (real and synthetic)
@@ -24,8 +22,12 @@ class VAE1(pl.LightningModule):
     def __init__(self, params):
         super().__init__()
         self.vae = VAENetwork()
-        self.discriminator = Discriminator(4)
-        self.discriminator_latent = Discriminator(3, in_channels=64)
+        self.discriminator = MultiScaleDiscriminator(
+            n_scales=2, n_layers=4, in_channels=3
+        )
+        self.discriminator_latent = MultiScaleDiscriminator(
+            n_scales=1, n_layers=3, in_channels=64
+        )
         self.params = params
         self.curr_device = None
         self.loss_vgg = VGGLoss()
@@ -67,7 +69,7 @@ class VAE1(pl.LightningModule):
             )
 
             self.log("vae1_loss", vae_loss, prog_bar=True, on_step=False, on_epoch=True)
-            self.log("loss_g_gan", loss_g_ganv, on_step=False, on_epoch=True)
+            self.log("loss_g_gan", loss_g_gan, on_step=False, on_epoch=True)
             self.log("loss_latent_gan", loss_latent_gan, on_step=False, on_epoch=True)
             self.log("loss_kl", loss_kl, on_step=False, on_epoch=True)
             self.log("loss_reconst", loss_reconst, on_step=False, on_epoch=True)
@@ -156,7 +158,9 @@ class VAE2(pl.LightningModule):
     def __init__(self, params):
         super().__init__()
         self.vae = VAENetwork()
-        self.discriminator = Discriminator()
+        self.discriminator = MultiScaleDiscriminator(
+            n_scales=2, n_layers=4, in_channels=3
+        )
         self.params = params
         self.curr_device = None
         self.loss_vgg = VGGLoss()
@@ -260,7 +264,9 @@ class Mapping(pl.LightningModule):
         self.vae1_encoder = vae1_encoder
         self.vae2 = vae2
         self.mapping = MappingNetwork()
-        self.discriminator = Discriminator()
+        self.discriminator = MultiScaleDiscriminator(
+            n_scales=2, n_layers=4, in_channels=3
+        )
         self.params = params
         self.loss_vgg = VGGLoss()
         self.loss_gan = GANLoss()
@@ -315,10 +321,10 @@ class Mapping(pl.LightningModule):
             denoised, _, _ = self(noisy_img)
             restored = self.vae2.decode(self.vae2.encode(clean_img))
 
-            real_loss = self.loss_gan(self.discriminator(restored), True)
-            fake_loss = self.loss_gan(self.discriminator(denoised), False)
-
-            d_loss = (real_loss + fake_loss) / 2
+            d_loss = (
+                self.loss_gan(self.discriminator(restored), True)
+                + self.loss_gan(self.discriminator(denoised), False)
+            ) / 2
             self.log("d_loss", d_loss, prog_bar=True, on_step=False, on_epoch=True)
             return d_loss
 

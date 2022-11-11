@@ -14,10 +14,10 @@ DEFAULT_HPARAMS = {
 }
 
 DEFAULT_TRAIN_PARAMS = {
-    "max_epochs": 1000,
+    "max_epochs": 5,
     "gpus": 1,
-    "log_every_n_steps": 1,
-    "check_val_every_n_epoch": 50,
+    "log_every_n_steps": 50,
+    "check_val_every_n_epoch": 1,
     "data_dir": "datasets",
     "batch_size": 16,
     "log_dir": None,
@@ -98,3 +98,4 @@ if __name__ == "__main__":
     # train_VAE1(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS)
     train_VAE2(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS)
     # train_Mapping(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS, "vae1.ckpt", "vae2.ckpt")
+    pass
