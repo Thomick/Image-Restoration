@@ -1,19 +1,16 @@
-from dataset import GenericDataModule
+from dataset import GenericDataModule, rescale_colors
 from models import VAE2, VAE1, Mapping
 import torch
 from pathlib import Path
 import os
 import numpy as np
 from utils import psnr, save_image
+from torchvision.transforms import functional as F
+from torchvision import io
+import lpips
+from train import DEFAULT_HPARAMS
 
-
-params = {
-    "lr": 2e-3,
-    "a_reconst": 10,
-    "b1": 0.5,
-    "b2": 0.999,
-    "lambda1": 60,
-}
+lpips_loss = lpips.LPIPS(net="vgg").to("cuda")
 
 # TODO: Remove params from the checkpoint loading (try two step initialization)
 
@@ -22,7 +19,7 @@ def visualize_VAE1(dataset="train"):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     VAE1_model = VAE1.load_from_checkpoint(
-        "vae1.ckpt", params=params, device=device
+        "vae1.ckpt", params=DEFAULT_HPARAMS, device=device
     ).to(device)
 
     data_module = GenericDataModule("datasets", batch_size=32, phase="A")
@@ -43,28 +40,44 @@ def visualize_VAE1(dataset="train"):
 
 
 # Load a checkpoint of VAE2 and visualize the results on one batch of either the train or validation set
-def visualize_VAE2(dataset="train"):
+def visualize_VAE2(dataset="train", name_list=None, ckpt_path="vae2.ckpt"):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     VAE2_model = VAE2.load_from_checkpoint(
-        "vae2.ckpt", params=params, device=device
+        ckpt_path, params=DEFAULT_HPARAMS, device=device
     ).to(device)
 
-    data_module = GenericDataModule("datasets", batch_size=32, phase="B")
-    data_module.setup()
-    if dataset == "train":
-        dataloader = data_module.train_dataloader()
-    elif dataset == "val":
-        dataloader = data_module.val_dataloader()
+    if name_list == None:
+        data_module = GenericDataModule("datasets", batch_size=32, phase="B")
+        data_module.setup()
+        if dataset == "train":
+            dataloader = data_module.train_dataloader()
+        elif dataset == "val":
+            dataloader = data_module.val_dataloader()
+        else:
+            raise Exception("Invalid dataset")
+        image, _ = next(iter(dataloader))
     else:
-        raise Exception("Invalid dataset")
-    image, _ = next(iter(dataloader))
+        image = torch.stack(
+            [
+                rescale_colors(
+                    F.center_crop(
+                        io.read_image(f"datasets/non_noisy/{name}").float(), 256
+                    )
+                )
+                for name in name_list
+            ]
+        )
     image = image.to(device)
     recons = VAE2_model.vae.decode(VAE2_model.vae.encode(image))
     Path(f"vae2_vis").mkdir(exist_ok=True, parents=True)
     save_image(recons.data, os.path.join("vae2_vis", f"recons.png"))
     save_image(image.data, os.path.join("vae2_vis", f"input.png"))
     np.savetxt("vae2_vis/psnr.txt", psnr(recons, image).detach().cpu().numpy())
+    np.savetxt(
+        "vae2_vis/lpips.txt",
+        lpips_loss.forward(recons, image).squeeze().detach().cpu().numpy(),
+    )
 
 
 # Load a checkpoint of the full model and visualize the results on one batch of either the train or validation set
@@ -72,11 +85,17 @@ def visualize_full(dataset="train"):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     vae1_encoder = VAE1.load_from_checkpoint(
-        "vae1.ckpt", params=params, device="cpu"
+        "vae1.ckpt", params=DEFAULT_HPARAMS, device="cpu"
     ).vae.encoder
-    vae2 = VAE2.load_from_checkpoint("vae2.ckpt", params=params, device="cpu").vae
+    vae2 = VAE2.load_from_checkpoint(
+        "vae2.ckpt", params=DEFAULT_HPARAMS, device="cpu"
+    ).vae
     full_model = Mapping.load_from_checkpoint(
-        "full.ckpt", params=params, vae1_encoder=vae1_encoder, vae2=vae2, device=device
+        "full.ckpt",
+        params=DEFAULT_HPARAMS,
+        vae1_encoder=vae1_encoder,
+        vae2=vae2,
+        device=device,
     ).to(device)
     visualize_full_synth(dataset, full_model)
     visualize_full_real(dataset, full_model)
@@ -125,6 +144,16 @@ def visualize_full_real(dataset="train", full_model=None):
 
 
 if __name__ == "__main__":
-    visualize_full(dataset="val")
-    visualize_VAE1(dataset="val")
-    visualize_VAE2(dataset="val")
+    test_images = [
+        "Img500.png",
+        "Img499.png",
+        "Img498.png",
+        "Img497.png",
+        "Img496.png",
+        "Img495.png",
+        "Img494.png",
+        "Img493.png",
+    ]
+    # visualize_full(dataset="val")
+    # visualize_VAE1(dataset="val")
+    visualize_VAE2(dataset="val", name_list=test_images, ckpt_path="vae2nopercept.ckpt")

@@ -186,8 +186,13 @@ class VAE2(pl.LightningModule):
 
             loss_kl = torch.mean(torch.pow(latent, 2)) / 2
             loss_reconst = F.l1_loss(reconst_img, real_img)
-            loss_feat_gan = self.loss_feat_gan(pred_disc_real, pred_disc_fake)
-            loss_vgg = self.loss_vgg(reconst_img, real_img)
+            if self.params["use_perceptual_loss"]:
+                loss_feat_gan = self.loss_feat_gan(pred_disc_real, pred_disc_fake)
+                loss_vgg = self.loss_vgg(reconst_img, real_img)
+            else:
+                loss_feat_gan = 0
+                loss_vgg = 0
+
             vae_loss = (
                 loss_kl
                 + self.params["a_reconst"] * loss_reconst
@@ -199,8 +204,9 @@ class VAE2(pl.LightningModule):
             self.log("loss_g_gan", loss_g_gan, on_step=False, on_epoch=True)
             self.log("loss_kl", loss_kl, on_step=False, on_epoch=True)
             self.log("loss_reconst", loss_reconst, on_step=False, on_epoch=True)
-            self.log("loss_feat_gan", loss_feat_gan, on_step=False, on_epoch=True)
-            self.log("loss_vgg", loss_vgg, on_step=False, on_epoch=True)
+            if self.params["use_perceptual_loss"]:
+                self.log("loss_feat_gan", loss_feat_gan, on_step=False, on_epoch=True)
+                self.log("loss_vgg", loss_vgg, on_step=False, on_epoch=True)
             return vae_loss
 
         # train discriminator to distinguish real and reconstructed images (1=real, 0=recoonstructed)

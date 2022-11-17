@@ -4,6 +4,8 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.progress import TQDMProgressBar
 
 
+USE_PERCEPTUAL_LOSS = False
+
 DEFAULT_HPARAMS = {
     "lr": 2e-4,
     "a_reconst": 10,
@@ -11,18 +13,21 @@ DEFAULT_HPARAMS = {
     "b2": 0.999,
     "lambda1_recons": 60,
     "lambda2_feat": 10,
+    "use_transpose_conv": True,
 }
 
 DEFAULT_TRAIN_PARAMS = {
-    "max_epochs": 5,
+    "max_epochs": 2000,
     "gpus": 1,
-    "log_every_n_steps": 50,
-    "check_val_every_n_epoch": 1,
+    "log_every_n_steps": 10,
+    "check_val_every_n_epoch": 100,
     "data_dir": "datasets",
     "batch_size": 16,
     "log_dir": None,
     "exp_name": None,
+    "use_perceptual_loss": True,
 }
+
 
 # TODO : Allow to resume training
 # TODO : Allow to specify the log directory and experiment name
@@ -48,7 +53,8 @@ def train_VAE1(hparams=DEFAULT_HPARAMS, train_params=DEFAULT_TRAIN_PARAMS):
 
 
 def train_VAE2(hparams=DEFAULT_HPARAMS, train_params=DEFAULT_TRAIN_PARAMS):
-    VAE2_model = VAE2(hparams)
+    params = {**hparams, **train_params}
+    VAE2_model = VAE2(params)
 
     data_module = GenericDataModule(
         train_params["data_dir"], batch_size=train_params["batch_size"], phase="B"
@@ -95,6 +101,8 @@ def train_Mapping(
 
 
 if __name__ == "__main__":
+    train_params = DEFAULT_TRAIN_PARAMS
+    train_params["use_perceptual_loss"] = USE_PERCEPTUAL_LOSS
     # train_VAE1(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS)
     train_VAE2(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS)
     # train_Mapping(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS, "vae1.ckpt", "vae2.ckpt")

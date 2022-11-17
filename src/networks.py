@@ -4,10 +4,13 @@ from torchvision import models
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision.transforms import Resize
 
 
 class VAENetwork(nn.Module):
-    def __init__(self, hidden_dim=64, latent_dim=64, activation=nn.ReLU):
+    def __init__(
+        self, hidden_dim=64, latent_dim=64, activation=nn.ReLU, use_transpose_conv=True
+    ):
         super(VAENetwork, self).__init__()
 
         activation = nn.ReLU()
@@ -29,8 +32,19 @@ class VAENetwork(nn.Module):
             ResBlock(hidden_channel_dim),
             ResBlock(hidden_channel_dim),
             ResBlock(hidden_channel_dim),
-            DeconvBlock(64, 64, 4, 2, 1, activation),
-            DeconvBlock(64, 64, 4, 2, 1, activation),
+        ]
+        if use_transpose_conv:
+            decoder += [
+                DeconvBlock(64, 64, 4, 2, 1, activation),
+                DeconvBlock(64, 64, 4, 2, 1, activation),
+            ]
+        else:
+            decoder += [
+                ResizeConvBlock(64, 64, 4, 1, 1, activation),
+                ResizeConvBlock(64, 64, 4, 1, 1, activation),
+            ]
+
+        decoder += [
             nn.Conv2d(64, 3, 7, 1, "same"),
             nn.Tanh(),
         ]
@@ -102,6 +116,33 @@ class DeconvBlock(nn.Sequential):
             model += [nn.InstanceNorm2d(out_channels)]
         model += [activation]
         super(DeconvBlock, self).__init__(*model)
+
+
+class ResizeConvBlock(nn.Sequential):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride,
+        padding,
+        activation=nn.ReLU(),
+        use_norm=True,
+    ):
+        model = [
+            nn.Interpolate(scale_factor=2, mode="nearest"),
+            nn.Conv2d(
+                in_channels,
+                out_channels,
+                kernel_size,
+                stride,
+                padding,
+            ),
+        ]
+        if use_norm:
+            model += [nn.InstanceNorm2d(out_channels)]
+        model += [activation]
+        super(ResizeConvBlock, self).__init__(*model)
 
 
 # ResBlock is a residual block with two convolutional layers
