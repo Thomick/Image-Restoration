@@ -4,13 +4,11 @@ import torch
 from pathlib import Path
 import os
 import numpy as np
-from utils import psnr, save_image
+from utils import psnr, save_image, lpips
 from torchvision.transforms import functional as F
 from torchvision import io
 import lpips
 from train import DEFAULT_HPARAMS
-
-lpips_loss = lpips.LPIPS(net="vgg").to("cuda")
 
 # TODO: Remove params from the checkpoint loading (try two step initialization)
 
@@ -76,7 +74,7 @@ def visualize_VAE2(dataset="train", name_list=None, ckpt_path="vae2.ckpt"):
     np.savetxt("vae2_vis/psnr.txt", psnr(recons, image).detach().cpu().numpy())
     np.savetxt(
         "vae2_vis/lpips.txt",
-        lpips_loss.forward(recons, image).squeeze().detach().cpu().numpy(),
+        lpips(recons, image).detach().cpu().numpy(),
     )
 
 

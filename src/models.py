@@ -12,7 +12,7 @@ from networks import (
     GANLoss,
     DiscriminatorFeatureLoss,
 )
-from utils import save_image
+from utils import save_image, psnr, lpips
 
 
 # VAE with interwined latent space for real and synthetic images
@@ -207,6 +207,18 @@ class VAE2(pl.LightningModule):
             if self.params["use_perceptual_loss"]:
                 self.log("loss_feat_gan", loss_feat_gan, on_step=False, on_epoch=True)
                 self.log("loss_vgg", loss_vgg, on_step=False, on_epoch=True)
+            self.log(
+                "psnr/train",
+                torch.mean(psnr(reconst_img, real_img)),
+                on_step=False,
+                on_epoch=True,
+            )
+            self.log(
+                "lpips/train",
+                torch.mean(lpips(reconst_img, real_img)),
+                on_step=False,
+                on_epoch=True,
+            )
             return vae_loss
 
         # train discriminator to distinguish real and reconstructed images (1=real, 0=recoonstructed)
@@ -232,11 +244,26 @@ class VAE2(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         self.curr_device = batch[0].device
-        # TODO: Implement the validation step for VAE2
+        real_img, _ = batch
+        reconst_img, _ = self(real_img)
+        self.log(
+            "psnr/val",
+            torch.mean(psnr(reconst_img, real_img)),
+            on_step=False,
+            on_epoch=True,
+        )
+        self.log(
+            "lpips/val",
+            torch.mean(lpips(reconst_img, real_img)),
+            on_step=False,
+            on_epoch=True,
+        )
+
         pass
 
     def on_validation_end(self) -> None:
-        self.sample_images()
+        if self.current_epoch % self.params["sample_images_every_n_epoch"] == 0:
+            self.sample_images()
 
     def sample_images(self):
         # Get sample reconstruction image

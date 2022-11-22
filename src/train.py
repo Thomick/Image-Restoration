@@ -13,14 +13,15 @@ DEFAULT_HPARAMS = {
     "b2": 0.999,
     "lambda1_recons": 60,
     "lambda2_feat": 10,
-    "use_transpose_conv": True,
+    "use_transpose_conv": False,
 }
 
 DEFAULT_TRAIN_PARAMS = {
     "max_epochs": 2000,
     "gpus": 1,
     "log_every_n_steps": 10,
-    "check_val_every_n_epoch": 100,
+    "check_val_every_n_epoch": 1,
+    "sample_images_every_n_epoch": 100,
     "data_dir": "datasets",
     "batch_size": 16,
     "log_dir": None,
@@ -31,6 +32,7 @@ DEFAULT_TRAIN_PARAMS = {
 
 # TODO : Allow to resume training
 # TODO : Allow to specify the log directory and experiment name
+# TODO : Fix learning rate scheduling
 
 
 def train_VAE1(hparams=DEFAULT_HPARAMS, train_params=DEFAULT_TRAIN_PARAMS):
