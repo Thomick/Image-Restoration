@@ -5,10 +5,22 @@ import lpips as lpips_module
 
 DEFAULT_VALUE_RANGE = (-1, 1)
 
+# Rescale colors from [0, 255] to [-1, 1]
+def rescale_colors(image):
+    return 2 * image / 255.0 - 1.0
+
+
+# Inverse of rescale_colors
+def rescale_colors_back(image):
+    return (image + 1.0) * 127.5
+
+
 # Save a batch of images
-def save_image(images, path, nrow=8, value_range=DEFAULT_VALUE_RANGE):
+def save_image(images, path, nrow=8):
     Path(path).parent.mkdir(exist_ok=True, parents=True)
-    vutils.save_image(images, path, nrow=nrow, normalize=True, value_range=value_range)
+    images = images.clamp(-1, 1)
+    images = rescale_colors_back(images) / 255.0
+    vutils.save_image(images, path, nrow=nrow, normalize=False)
 
 
 # Compute PSNR between two images

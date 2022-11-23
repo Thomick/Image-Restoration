@@ -5,10 +5,7 @@ from torchvision import transforms, io
 import torchvision.transforms.functional as TF
 from pathlib import Path
 import numpy as np
-
-
-def rescale_colors(image):
-    return 2 * image / 255.0 - 1.0
+from utils import rescale_colors
 
 
 def randomJPEGcompression(image):

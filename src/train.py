@@ -4,8 +4,6 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.progress import TQDMProgressBar
 
 
-USE_PERCEPTUAL_LOSS = False
-
 DEFAULT_HPARAMS = {
     "lr": 2e-4,
     "a_reconst": 10,
@@ -103,8 +101,6 @@ def train_Mapping(
 
 
 if __name__ == "__main__":
-    train_params = DEFAULT_TRAIN_PARAMS
-    train_params["use_perceptual_loss"] = USE_PERCEPTUAL_LOSS
     # train_VAE1(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS)
     train_VAE2(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS)
     # train_Mapping(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS, "vae1.ckpt", "vae2.ckpt")

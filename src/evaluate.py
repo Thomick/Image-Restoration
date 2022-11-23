@@ -1,14 +1,15 @@
-from dataset import GenericDataModule, rescale_colors
+from dataset import GenericDataModule
 from models import VAE2, VAE1, Mapping
 import torch
 from pathlib import Path
 import os
 import numpy as np
-from utils import psnr, save_image, lpips
+from utils import psnr, save_image, lpips, rescale_colors
 from torchvision.transforms import functional as F
 from torchvision import io
-import lpips
 from train import DEFAULT_HPARAMS
+
+device = "cuda"
 
 # TODO: Remove params from the checkpoint loading (try two step initialization)
 
@@ -39,11 +40,12 @@ def visualize_VAE1(dataset="train"):
 
 # Load a checkpoint of VAE2 and visualize the results on one batch of either the train or validation set
 def visualize_VAE2(dataset="train", name_list=None, ckpt_path="vae2.ckpt"):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     VAE2_model = VAE2.load_from_checkpoint(
         ckpt_path, params=DEFAULT_HPARAMS, device=device
     ).to(device)
+
+    print(VAE2_model)
 
     if name_list == None:
         data_module = GenericDataModule("datasets", batch_size=32, phase="B")
@@ -71,6 +73,7 @@ def visualize_VAE2(dataset="train", name_list=None, ckpt_path="vae2.ckpt"):
     Path(f"vae2_vis").mkdir(exist_ok=True, parents=True)
     save_image(recons.data, os.path.join("vae2_vis", f"recons.png"))
     save_image(image.data, os.path.join("vae2_vis", f"input.png"))
+    np.save("vae2_vis/test.npy", recons[0].detach().cpu().numpy())
     np.savetxt("vae2_vis/psnr.txt", psnr(recons, image).detach().cpu().numpy())
     np.savetxt(
         "vae2_vis/lpips.txt",
@@ -154,4 +157,4 @@ if __name__ == "__main__":
     ]
     # visualize_full(dataset="val")
     # visualize_VAE1(dataset="val")
-    visualize_VAE2(dataset="val", name_list=test_images, ckpt_path="vae2nopercept.ckpt")
+    visualize_VAE2(dataset="val", name_list=test_images, ckpt_path="vae2nodeconv.ckpt")
