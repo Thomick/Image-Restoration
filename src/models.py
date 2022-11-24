@@ -76,6 +76,18 @@ class VAE1(pl.LightningModule):
             self.log("loss_reconst", loss_reconst, on_step=False, on_epoch=True)
             self.log("loss_feat_gan", loss_feat_gan, on_step=False, on_epoch=True)
             self.log("loss_vgg", loss_vgg, on_step=False, on_epoch=True)
+            self.log(
+                "psnr/train",
+                torch.mean(psnr(reconst_img, input_img)),
+                on_step=False,
+                on_epoch=True,
+            )
+            self.log(
+                "lpips/train",
+                torch.mean(lpips(reconst_img, input_img)),
+                on_step=False,
+                on_epoch=True,
+            )
             return vae_loss
 
         # train discriminator
@@ -155,8 +167,20 @@ class VAE1(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         self.curr_device = batch[0].device
-        # TODO: Implement the validation step for VAE1
-        pass
+        input_img, _ = batch
+        reconst_img, _ = self(input_img)
+        self.log(
+            "psnr/val",
+            torch.mean(psnr(reconst_img, input_img)),
+            on_step=False,
+            on_epoch=True,
+        )
+        self.log(
+            "lpips/val",
+            torch.mean(lpips(reconst_img, input_img)),
+            on_step=False,
+            on_epoch=True,
+        )
 
     def on_validation_end(self) -> None:
         self.sample_images()
@@ -320,8 +344,6 @@ class VAE2(pl.LightningModule):
             on_epoch=True,
         )
 
-        pass
-
     def on_validation_end(self) -> None:
         if self.current_epoch % self.params["sample_images_every_n_epoch"] == 0:
             self.sample_images()
@@ -407,6 +429,19 @@ class Mapping(pl.LightningModule):
             )
             self.log("loss_feat_gan", loss_feat_gan, on_step=False, on_epoch=True)
             self.log("loss_vgg", loss_vgg, on_step=False, on_epoch=True)
+
+            self.log(
+                "psnr/train",
+                torch.mean(psnr(denoised, clean_img)),
+                on_step=False,
+                on_epoch=True,
+            )
+            self.log(
+                "lpips/train",
+                torch.mean(lpips(denoised, clean_img)),
+                on_step=False,
+                on_epoch=True,
+            )
             return mapping_loss
 
         # train discriminator to distinguish real and reconstructed images (1=real, 0=recoonstructed)
@@ -456,6 +491,7 @@ class Mapping(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         self.curr_device = batch[0].device
+        # TODO : Implement validation step for the full model
         pass
 
     def on_validation_end(self) -> None:
