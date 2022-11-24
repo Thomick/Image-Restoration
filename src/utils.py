@@ -30,8 +30,9 @@ def psnr(imgs1, imgs2, value_range=DEFAULT_VALUE_RANGE):
     return 20 * torch.log10(PIXEL_MAX / torch.sqrt(mse))
 
 
-lpips_loss = lpips_module.LPIPS(net="vgg").to("cuda")
+lpips_loss = lpips_module.LPIPS(net="vgg")
 
 
-def lpips(imgs1, imgs2):
+def lpips(imgs1, imgs2, device="cuda"):
+    lpips_loss.to(device)
     return lpips_loss.forward(imgs1, imgs2).squeeze()

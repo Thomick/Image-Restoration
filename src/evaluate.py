@@ -8,8 +8,9 @@ from utils import psnr, save_image, lpips, rescale_colors
 from torchvision.transforms import functional as F
 from torchvision import io
 from train import DEFAULT_HPARAMS
+import tqdm
 
-device = "cuda"
+device = "cpu"
 
 # TODO: Remove params from the checkpoint loading (try two step initialization)
 
@@ -77,8 +78,36 @@ def visualize_VAE2(dataset="train", name_list=None, ckpt_path="vae2.ckpt"):
     np.savetxt("vae2_vis/psnr.txt", psnr(recons, image).detach().cpu().numpy())
     np.savetxt(
         "vae2_vis/lpips.txt",
-        lpips(recons, image).detach().cpu().numpy(),
+        lpips(recons, image, device).detach().cpu().numpy(),
     )
+
+
+def evaluate_VAE2_fulldataset(dataset="train", ckpt_path="vae2.ckpt"):
+
+    VAE2_model = VAE2.load_from_checkpoint(
+        ckpt_path, params=DEFAULT_HPARAMS, device=device
+    ).to(device)
+
+    print(VAE2_model)
+
+    data_module = GenericDataModule("datasets", batch_size=32, phase="B")
+    data_module.setup()
+    if dataset == "train":
+        dataloader = data_module.train_dataloader()
+    elif dataset == "val":
+        dataloader = data_module.val_dataloader()
+    else:
+        raise Exception("Invalid dataset")
+    psnr_metric = []
+    lpips_metric = []
+    for image, _ in iter(dataloader):
+        image = image.to(device)
+        recons = VAE2_model.vae.decode(VAE2_model.vae.encode(image))
+        psnr_metric += psnr(recons, image).detach().cpu().numpy().tolist()
+        lpips_metric += lpips(recons, image, device).detach().cpu().numpy().tolist()
+
+    print(f"average psnr({dataset}) : {np.mean(psnr_metric)}")
+    print(f"average lpips({dataset}) : {np.mean(lpips_metric)}")
 
 
 # Load a checkpoint of the full model and visualize the results on one batch of either the train or validation set
@@ -157,4 +186,6 @@ if __name__ == "__main__":
     ]
     # visualize_full(dataset="val")
     # visualize_VAE1(dataset="val")
-    visualize_VAE2(dataset="val", name_list=test_images, ckpt_path="vae2nodeconv.ckpt")
+    # visualize_VAE2(dataset="val", name_list=test_images, ckpt_path="vae2nodeconv.ckpt")
+    evaluate_VAE2_fulldataset("train", "vae2nodeconv.ckpt")
+    evaluate_VAE2_fulldataset("val", "vae2nodeconv.ckpt")
