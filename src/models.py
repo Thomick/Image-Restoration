@@ -15,8 +15,6 @@ from networks import (
 )
 from utils import save_image, psnr, lpips
 
-# TODO : Implement lr schedulers for the other modules (done for VAE2)
-
 
 # VAE with interwined latent space for real and synthetic images
 # Input: Noisy images (real and synthetic)
@@ -119,7 +117,41 @@ class VAE1(pl.LightningModule):
         opt_d_latent = torch.optim.Adam(
             self.discriminator_latent.parameters(), lr=lr, betas=(b1, b2)
         )
-        return [opt_vae, opt_d, opt_d_latent], []
+        sch_vae = lr_scheduler.SequentialLR(
+            opt_vae,
+            [
+                lr_scheduler.ConstantLR(
+                    opt_vae, factor=1, total_iters=self.trainer.max_epochs - 100
+                ),
+                lr_scheduler.LinearLR(
+                    opt_vae, start_factor=1, end_factor=0, total_iters=100
+                ),
+            ],
+        )
+        sch_d = lr_scheduler.SequentialLR(
+            opt_d,
+            [
+                lr_scheduler.ConstantLR(
+                    opt_d, factor=1, total_iters=self.trainer.max_epochs - 100
+                ),
+                lr_scheduler.LinearLR(
+                    opt_d, start_factor=1, end_factor=0, total_iters=100
+                ),
+            ],
+        )
+        sch_d_latent = lr_scheduler.SequentialLR(
+            opt_d_latent,
+            [
+                lr_scheduler.ConstantLR(
+                    opt_d_latent, factor=1, total_iters=self.trainer.max_epochs - 100
+                ),
+                lr_scheduler.LinearLR(
+                    opt_d_latent, start_factor=1, end_factor=0, total_iters=100
+                ),
+            ],
+        )
+
+        return [opt_vae, opt_d, opt_d_latent], [sch_vae, sch_d, sch_d_latent]
 
     def validation_step(self, batch, batch_idx):
         self.curr_device = batch[0].device
@@ -397,7 +429,30 @@ class Mapping(pl.LightningModule):
 
         opt_mapping = torch.optim.Adam(self.mapping.parameters(), lr=lr, betas=(b1, b2))
         opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=lr, betas=(b1, b2))
-        return [opt_mapping, opt_d], []
+
+        sch_mapping = lr_scheduler.SequentialLR(
+            opt_mapping,
+            [
+                lr_scheduler.ConstantLR(
+                    opt_mapping, factor=1, total_iters=self.trainer.max_epochs - 100
+                ),
+                lr_scheduler.LinearLR(
+                    opt_mapping, start_factor=1, end_factor=0, total_iters=100
+                ),
+            ],
+        )
+        sch_d = lr_scheduler.SequentialLR(
+            opt_d,
+            [
+                lr_scheduler.ConstantLR(
+                    opt_d, factor=1, total_iters=self.trainer.max_epochs - 100
+                ),
+                lr_scheduler.LinearLR(
+                    opt_d, start_factor=1, end_factor=0, total_iters=100
+                ),
+            ],
+        )
+        return [opt_mapping, opt_d], [sch_mapping, sch_d]
 
     def validation_step(self, batch, batch_idx):
         self.curr_device = batch[0].device
