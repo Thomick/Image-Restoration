@@ -2,6 +2,7 @@
 
 import os
 import pytorch_lightning as pl
+import torch.optim.lr_scheduler as lr_scheduler
 import torch
 import torch.nn.functional as F
 from networks import (
@@ -13,6 +14,8 @@ from networks import (
     DiscriminatorFeatureLoss,
 )
 from utils import save_image, psnr, lpips
+
+# TODO : Implement lr schedulers for the other modules (done for VAE2)
 
 
 # VAE with interwined latent space for real and synthetic images
@@ -243,7 +246,30 @@ class VAE2(pl.LightningModule):
 
         opt_vae = torch.optim.Adam(self.vae.parameters(), lr=lr, betas=(b1, b2))
         opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=lr, betas=(b1, b2))
-        return [opt_vae, opt_d], []
+
+        sch_vae = lr_scheduler.SequentialLR(
+            opt_vae,
+            [
+                lr_scheduler.ConstantLR(
+                    opt_vae, factor=1, total_iters=self.trainer.max_epochs - 100
+                ),
+                lr_scheduler.LinearLR(
+                    opt_vae, start_factor=1, end_factor=0, total_iters=100
+                ),
+            ],
+        )
+        sch_d = lr_scheduler.SequentialLR(
+            opt_d,
+            [
+                lr_scheduler.ConstantLR(
+                    opt_d, factor=1, total_iters=self.trainer.max_epochs - 100
+                ),
+                lr_scheduler.LinearLR(
+                    opt_d, start_factor=1, end_factor=0, total_iters=100
+                ),
+            ],
+        )
+        return [opt_vae, opt_d], [sch_vae, sch_d]
 
     def validation_step(self, batch, batch_idx):
         self.curr_device = batch[0].device
