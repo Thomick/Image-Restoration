@@ -9,11 +9,16 @@ from torchvision.transforms import Resize
 
 class VAENetwork(nn.Module):
     def __init__(
-        self, hidden_dim=64, latent_dim=64, activation=nn.ReLU, use_transpose_conv=True
+        self,
+        hidden_dim=64,
+        latent_dim=64,
+        activation=nn.ReLU,
+        use_transpose_conv=True,
+        interp_mode="bilinear",
     ):
         super(VAENetwork, self).__init__()
 
-        activation = nn.ReLU()
+        activation = nn.ReLU(inplace=True)
         hidden_channel_dim = 64
 
         encoder = [
@@ -40,8 +45,12 @@ class VAENetwork(nn.Module):
             ]
         else:
             decoder += [
-                ResizeConvBlock(64, 64, 4, 1, 1, activation),
-                ResizeConvBlock(64, 64, 4, 1, 1, activation),
+                ResizeConvBlock(
+                    64, 64, 3, 1, "same", activation, interp_mode=interp_mode
+                ),
+                ResizeConvBlock(
+                    64, 64, 3, 1, "same", activation, interp_mode=interp_mode
+                ),
             ]
 
         decoder += [
@@ -73,7 +82,7 @@ class ConvBlock(nn.Sequential):
         kernel_size,
         stride,
         padding,
-        activation=nn.ReLU(),
+        activation=nn.ReLU(inplace=True),
         use_norm=True,
     ):
         model = [
@@ -100,7 +109,7 @@ class DeconvBlock(nn.Sequential):
         kernel_size,
         stride,
         padding,
-        activation=nn.ReLU(),
+        activation=nn.ReLU(inplace=True),
         use_norm=True,
     ):
         model = [
@@ -118,6 +127,18 @@ class DeconvBlock(nn.Sequential):
         super(DeconvBlock, self).__init__(*model)
 
 
+class Interpolate(nn.Module):
+    def __init__(self, scale_factor, mode="bilinear"):
+        super(Interpolate, self).__init__()
+        self.interp = nn.functional.interpolate
+        self.scale_factor = scale_factor
+        self.mode = mode
+
+    def forward(self, x):
+        x = self.interp(x, scale_factor=self.scale_factor, mode=self.mode)
+        return x
+
+
 class ResizeConvBlock(nn.Sequential):
     def __init__(
         self,
@@ -126,11 +147,12 @@ class ResizeConvBlock(nn.Sequential):
         kernel_size,
         stride,
         padding,
-        activation=nn.ReLU(),
+        activation=nn.ReLU(inplace=True),
         use_norm=True,
+        interp_mode="bilinear",
     ):
         model = [
-            nn.Interpolate(scale_factor=2, mode="nearest"),
+            Interpolate(2, interp_mode),
             nn.Conv2d(
                 in_channels,
                 out_channels,
@@ -147,7 +169,7 @@ class ResizeConvBlock(nn.Sequential):
 
 # ResBlock is a residual block with two convolutional layers
 class ResBlock(nn.Module):
-    def __init__(self, dim, activation=nn.ReLU()):
+    def __init__(self, dim, activation=nn.ReLU(inplace=True)):
         super(ResBlock, self).__init__()
         model = [
             ConvBlock(dim, dim, 3, 1, "same", activation),
@@ -273,16 +295,26 @@ class Discriminator(nn.Module):
         nf = 64
         model = [
             ConvBlock(
-                in_channels, nf, 4, 2, 1, activation=nn.LeakyReLU(0.2), use_norm=False
+                in_channels,
+                nf,
+                4,
+                2,
+                1,
+                activation=nn.LeakyReLU(0.2, inplace=True),
+                use_norm=False,
             )
         ]
         for _ in range(1, n_layers):
             nf_prev = nf
             nf = min(nf * 2, 512)
-            model += [ConvBlock(nf_prev, nf, 4, 2, 1, activation=nn.LeakyReLU(0.2))]
+            model += [
+                ConvBlock(
+                    nf_prev, nf, 4, 2, 1, activation=nn.LeakyReLU(0.2, inplace=True)
+                )
+            ]
 
         model += [
-            ConvBlock(nf, nf, 4, 1, 1, activation=nn.LeakyReLU(0.2)),
+            ConvBlock(nf, nf, 4, 1, 1, activation=nn.LeakyReLU(0.2, inplace=True)),
             nn.Conv2d(nf, 1, 4, 1, 1),
         ]
         self.model = nn.Sequential(*model)

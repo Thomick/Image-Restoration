@@ -157,7 +157,10 @@ class VAE1(pl.LightningModule):
 class VAE2(pl.LightningModule):
     def __init__(self, params):
         super().__init__()
-        self.vae = VAENetwork()
+        self.vae = VAENetwork(
+            use_transpose_conv=params["use_transpose_conv"],
+            interp_mode=params["interp_mode"],
+        )
         self.discriminator = MultiScaleDiscriminator(
             n_scales=2, n_layers=4, in_channels=3
         )

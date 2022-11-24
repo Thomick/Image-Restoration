@@ -12,6 +12,7 @@ DEFAULT_HPARAMS = {
     "lambda1_recons": 60,
     "lambda2_feat": 10,
     "use_transpose_conv": False,
+    "interp_mode": "bilinear",
 }
 
 DEFAULT_TRAIN_PARAMS = {
@@ -55,6 +56,7 @@ def train_VAE1(hparams=DEFAULT_HPARAMS, train_params=DEFAULT_TRAIN_PARAMS):
 def train_VAE2(hparams=DEFAULT_HPARAMS, train_params=DEFAULT_TRAIN_PARAMS):
     params = {**hparams, **train_params}
     VAE2_model = VAE2(params)
+    print(VAE2_model)
 
     data_module = GenericDataModule(
         train_params["data_dir"], batch_size=train_params["batch_size"], phase="B"
