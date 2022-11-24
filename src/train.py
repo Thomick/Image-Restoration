@@ -28,7 +28,6 @@ DEFAULT_TRAIN_PARAMS = {
 
 
 # TODO : Allow to resume training
-# TODO : Fix learning rate scheduling
 
 
 def train_VAE1(hparams=DEFAULT_HPARAMS, train_params=DEFAULT_TRAIN_PARAMS):

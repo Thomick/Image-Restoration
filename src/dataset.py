@@ -49,15 +49,15 @@ random_degradation = transforms.RandomOrder(
 
 
 class VanillaDataset(Dataset):
-    def __init__(self, data_dir: str, split: str):
+    def __init__(self, data_dir: str, split: str, split_ratio=0.75):
         # load images
         self.data_dir = Path(data_dir)
         imgs = sorted([str(f) for f in self.data_dir.iterdir() if f.suffix == ".png"])
 
         self.imgs = (
-            imgs[: int(len(imgs) * 0.75)]
+            imgs[: int(len(imgs) * split_ratio)]
             if split == "train"
-            else imgs[int(len(imgs) * 0.75) :]
+            else imgs[int(len(imgs) * split_ratio) :]
         )
 
     def __len__(self):
@@ -71,15 +71,15 @@ class VanillaDataset(Dataset):
 
 
 class MappingDataset(Dataset):
-    def __init__(self, data_dir: str, split: str):
+    def __init__(self, data_dir: str, split: str, split_ratio=0.75):
         # Load images
         self.data_dir = Path(data_dir + "/non_noisy")
         imgs = sorted([str(f) for f in self.data_dir.iterdir() if f.suffix == ".png"])
 
         self.imgs = (
-            imgs[: int(len(imgs) * 0.75)]
+            imgs[: int(len(imgs) * split_ratio)]
             if split == "train"
-            else imgs[int(len(imgs) * 0.75) :]
+            else imgs[int(len(imgs) * split_ratio) :]
         )
 
     def __len__(self):
@@ -94,8 +94,7 @@ class MappingDataset(Dataset):
 
 
 class PhaseADataset(Dataset):
-    def __init__(self, data_dir: str, split: str):
-        # TODO : add a parameter to choose the split ratio
+    def __init__(self, data_dir: str, split: str, split_ratio=0.75):
 
         # Load noisy images
         real_data_dir = Path(data_dir + "/noisy")
@@ -104,9 +103,9 @@ class PhaseADataset(Dataset):
         )
 
         real_imgs = (
-            real_imgs[: int(len(real_imgs) * 0.75)]
+            real_imgs[: int(len(real_imgs) * split_ratio)]
             if split == "train"
-            else real_imgs[int(len(real_imgs) * 0.75) :]
+            else real_imgs[int(len(real_imgs) * split_ratio) :]
         )
 
         # Load clean images to which we will add synthetic noise
@@ -115,9 +114,9 @@ class PhaseADataset(Dataset):
             [str(f) for f in data_for_synthesis_dir.iterdir() if f.suffix == ".png"]
         )
         imgs_for_synthesis = (
-            imgs_for_synthesis[: int(len(imgs_for_synthesis) * 0.75)]
+            imgs_for_synthesis[: int(len(imgs_for_synthesis) * split_ratio)]
             if split == "train"
-            else imgs_for_synthesis[int(len(imgs_for_synthesis) * 0.75) :]
+            else imgs_for_synthesis[int(len(imgs_for_synthesis) * split_ratio) :]
         )
 
         # Combine the two sets of images
@@ -146,6 +145,7 @@ class GenericDataModule(LightningDataModule):
         batch_size: int = 16,
         num_workers: int = 4,
         phase: str = "A",
+        split_ratio=0.75,
     ):
         super().__init__()
 
@@ -153,22 +153,39 @@ class GenericDataModule(LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.phase = phase
+        self.split_ratio = split_ratio
 
     def setup(self, stage=None) -> None:
         if self.phase == "A":
-            self.val_dataset = PhaseADataset(self.data_dir, split="val")
-            self.train_dataset = PhaseADataset(self.data_dir, split="train")
+            self.val_dataset = PhaseADataset(
+                self.data_dir, split="val", split_ratio=self.split_ratio
+            )
+            self.train_dataset = PhaseADataset(
+                self.data_dir, split="train", split_ratio=self.split_ratio
+            )
         elif self.phase == "B":
-            self.val_dataset = VanillaDataset(self.data_dir + "/non_noisy", split="val")
+            self.val_dataset = VanillaDataset(
+                self.data_dir + "/non_noisy", split="val", split_ratio=self.split_ratio
+            )
             self.train_dataset = VanillaDataset(
-                self.data_dir + "/non_noisy", split="train"
+                self.data_dir + "/non_noisy",
+                split="train",
+                split_ratio=self.split_ratio,
             )
         elif self.phase == "Mapping":
-            self.val_dataset = MappingDataset(self.data_dir, split="val")
-            self.train_dataset = MappingDataset(self.data_dir, split="train")
+            self.val_dataset = MappingDataset(
+                self.data_dir, split="val", split_ratio=self.split_ratio
+            )
+            self.train_dataset = MappingDataset(
+                self.data_dir, split="train", split_ratio=self.split_ratio
+            )
         elif self.phase == "Vanilla":
-            self.val_dataset = VanillaDataset(self.data_dir, split="val")
-            self.train_dataset = VanillaDataset(self.data_dir, split="train")
+            self.val_dataset = VanillaDataset(
+                self.data_dir, split="val", split_ratio=self.split_ratio
+            )
+            self.train_dataset = VanillaDataset(
+                self.data_dir, split="train", split_ratio=self.split_ratio
+            )
         else:
             raise Exception("Invalid phase")
 
