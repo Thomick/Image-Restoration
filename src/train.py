@@ -23,14 +23,11 @@ DEFAULT_TRAIN_PARAMS = {
     "sample_images_every_n_epoch": 100,
     "data_dir": "datasets",
     "batch_size": 16,
-    "log_dir": None,
-    "exp_name": None,
     "use_perceptual_loss": True,
 }
 
 
 # TODO : Allow to resume training
-# TODO : Allow to specify the log directory and experiment name
 # TODO : Fix learning rate scheduling
 
 
