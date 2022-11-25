@@ -150,6 +150,7 @@ class VAE1(pl.LightningModule):
                     opt_d, start_factor=1, end_factor=0, total_iters=100
                 ),
             ],
+            milestones=[self.trainer.max_epochs - 100],
         )
         sch_d_latent = lr_scheduler.SequentialLR(
             opt_d_latent,
@@ -161,6 +162,7 @@ class VAE1(pl.LightningModule):
                     opt_d_latent, start_factor=1, end_factor=0, total_iters=100
                 ),
             ],
+            milestones=[self.trainer.max_epochs - 100],
         )
 
         return [opt_vae, opt_d, opt_d_latent], [sch_vae, sch_d, sch_d_latent]
@@ -313,6 +315,7 @@ class VAE2(pl.LightningModule):
                     opt_vae, start_factor=1, end_factor=0, total_iters=100
                 ),
             ],
+            milestones=[self.trainer.max_epochs - 100],
         )
         sch_d = lr_scheduler.SequentialLR(
             opt_d,
@@ -324,6 +327,7 @@ class VAE2(pl.LightningModule):
                     opt_d, start_factor=1, end_factor=0, total_iters=100
                 ),
             ],
+            milestones=[self.trainer.max_epochs - 100],
         )
         return [opt_vae, opt_d], [sch_vae, sch_d]
 
@@ -475,6 +479,7 @@ class Mapping(pl.LightningModule):
                     opt_mapping, start_factor=1, end_factor=0, total_iters=100
                 ),
             ],
+            milestones=[self.trainer.max_epochs - 100],
         )
         sch_d = lr_scheduler.SequentialLR(
             opt_d,
@@ -486,6 +491,7 @@ class Mapping(pl.LightningModule):
                     opt_d, start_factor=1, end_factor=0, total_iters=100
                 ),
             ],
+            milestones=[self.trainer.max_epochs - 100],
         )
         return [opt_mapping, opt_d], [sch_mapping, sch_d]
 

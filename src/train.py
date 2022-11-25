@@ -3,6 +3,8 @@ from models import VAE2, VAE1, Mapping
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.progress import TQDMProgressBar
 
+# Set to None to train from scratch
+checkpoint_path = "lightning_logs/version_2/checkpoints/epoch=1999-step=96000.ckpt"
 
 DEFAULT_HPARAMS = {
     "lr": 2e-4,
@@ -16,7 +18,7 @@ DEFAULT_HPARAMS = {
 }
 
 DEFAULT_TRAIN_PARAMS = {
-    "max_epochs": 2000,
+    "max_epochs": 5000,
     "gpus": 1,
     "log_every_n_steps": 10,
     "check_val_every_n_epoch": 1,
@@ -49,7 +51,9 @@ def train_VAE1(hparams=DEFAULT_HPARAMS, train_params=DEFAULT_TRAIN_PARAMS):
     trainer.fit(VAE1_model, data_module)
 
 
-def train_VAE2(hparams=DEFAULT_HPARAMS, train_params=DEFAULT_TRAIN_PARAMS):
+def train_VAE2(
+    hparams=DEFAULT_HPARAMS, train_params=DEFAULT_TRAIN_PARAMS, checkpoint_path=None
+):
     params = {**hparams, **train_params}
     VAE2_model = VAE2(params)
     print(VAE2_model)
@@ -67,7 +71,7 @@ def train_VAE2(hparams=DEFAULT_HPARAMS, train_params=DEFAULT_TRAIN_PARAMS):
         check_val_every_n_epoch=train_params["check_val_every_n_epoch"],
     )
 
-    trainer.fit(VAE2_model, data_module)
+    trainer.fit(VAE2_model, data_module, ckpt_path=checkpoint_path)
 
 
 def train_Mapping(
@@ -100,6 +104,6 @@ def train_Mapping(
 
 if __name__ == "__main__":
     # train_VAE1(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS)
-    train_VAE2(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS)
+    train_VAE2(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS, checkpoint_path=checkpoint_path)
     # train_Mapping(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS, "vae1.ckpt", "vae2.ckpt")
     pass

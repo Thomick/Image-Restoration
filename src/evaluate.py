@@ -75,11 +75,12 @@ def visualize_VAE2(dataset="train", name_list=None, ckpt_path="vae2.ckpt"):
     save_image(recons.data, os.path.join("vae2_vis", f"recons.png"))
     save_image(image.data, os.path.join("vae2_vis", f"input.png"))
     np.save("vae2_vis/test.npy", recons[0].detach().cpu().numpy())
-    np.savetxt("vae2_vis/psnr.txt", psnr(recons, image).detach().cpu().numpy())
-    np.savetxt(
-        "vae2_vis/lpips.txt",
-        lpips(recons, image, device).detach().cpu().numpy(),
-    )
+    psnr_metric = psnr(recons, image).detach().cpu().numpy()
+    np.savetxt("vae2_vis/psnr.txt", psnr_metric)
+    lpips_metric = lpips(recons, image, device).detach().cpu().numpy()
+    np.savetxt("vae2_vis/lpips.txt", lpips_metric)
+    print("psnr:" + str(np.mean(psnr_metric)))
+    print("lpips:" + str(np.mean(lpips_metric)))
 
 
 def evaluate_VAE2_fulldataset(dataset="train", ckpt_path="vae2.ckpt"):
@@ -175,17 +176,25 @@ def visualize_full_real(dataset="train", full_model=None):
 
 if __name__ == "__main__":
     test_images = [
-        "Img500.png",
-        "Img499.png",
-        "Img498.png",
-        "Img497.png",
-        "Img496.png",
-        "Img495.png",
-        "Img494.png",
-        "Img493.png",
+        # "Img500.png",
+        # "Img499.png",
+        # "Img498.png",
+        # "Img497.png",
+        # "Img496.png",
+        # "Img495.png",
+        # "Img494.png",
+        # "Img493.png",
+        "Img492.png",
+        "Img491.png",
+        "Img490.png",
+        "Img489.png",
+        "Img488.png",
+        "Img487.png",
+        "Img486.png",
+        "Img485.png",
     ]
     # visualize_full(dataset="val")
     # visualize_VAE1(dataset="val")
-    # visualize_VAE2(dataset="val", name_list=test_images, ckpt_path="vae2nodeconv.ckpt")
-    evaluate_VAE2_fulldataset("train", "vae2nodeconv.ckpt")
-    evaluate_VAE2_fulldataset("val", "vae2nodeconv.ckpt")
+    visualize_VAE2(dataset="val", name_list=test_images, ckpt_path="vae2nodeconv.ckpt")
+    # evaluate_VAE2_fulldataset("train", "vae2nodeconv.ckpt")
+    # evaluate_VAE2_fulldataset("val", "vae2nodeconv.ckpt")
