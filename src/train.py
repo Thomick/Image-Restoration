@@ -4,7 +4,7 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.progress import TQDMProgressBar
 
 # Set to None to train from scratch
-checkpoint_path = "lightning_logs/version_2/checkpoints/epoch=1999-step=96000.ckpt"
+checkpoint_path = None
 
 DEFAULT_HPARAMS = {
     "lr": 2e-4,
@@ -14,7 +14,8 @@ DEFAULT_HPARAMS = {
     "lambda1_recons": 60,
     "lambda2_feat": 10,
     "use_transpose_conv": False,
-    "interp_mode": "bilinear",
+    "interp_mode": "nearest",
+    "upsampling_kernel_size": 5,
 }
 
 DEFAULT_TRAIN_PARAMS = {
@@ -32,8 +33,12 @@ DEFAULT_TRAIN_PARAMS = {
 # TODO : Allow to resume training
 
 
-def train_VAE1(hparams=DEFAULT_HPARAMS, train_params=DEFAULT_TRAIN_PARAMS):
-    VAE1_model = VAE1(hparams)
+def train_VAE1(
+    hparams=DEFAULT_HPARAMS, train_params=DEFAULT_TRAIN_PARAMS, checkpoint_path=None
+):
+    params = {**hparams, **train_params}
+    VAE1_model = VAE1(params)
+    print(VAE1_model)
 
     data_module = GenericDataModule(
         train_params["data_dir"], batch_size=train_params["batch_size"], phase="A"
@@ -48,7 +53,7 @@ def train_VAE1(hparams=DEFAULT_HPARAMS, train_params=DEFAULT_TRAIN_PARAMS):
         check_val_every_n_epoch=train_params["check_val_every_n_epoch"],
     )
 
-    trainer.fit(VAE1_model, data_module)
+    trainer.fit(VAE1_model, data_module, ckpt_path=checkpoint_path)
 
 
 def train_VAE2(
@@ -80,9 +85,9 @@ def train_Mapping(
     vae1_ckpt_path="vae1.ckpt",
     vae2_ckpt_path="vae2.ckpt",
 ):
-    vae1_encoder = VAE1.load_from_checkpoint(vae1_ckpt_path, params=hparams).vae.encoder
-    vae2 = VAE2.load_from_checkpoint(vae2_ckpt_path, params=hparams).vae
-    mapping_model = Mapping(hparams, vae1_encoder, vae2)
+    params = {**hparams, **train_params}
+    mapping_model = Mapping(params, vae1_ckpt_path, vae2_ckpt_path)
+    print(mapping_model)
 
     data_module = GenericDataModule(
         train_params["data_dir"],
@@ -103,7 +108,13 @@ def train_Mapping(
 
 
 if __name__ == "__main__":
-    # train_VAE1(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS)
-    train_VAE2(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS, checkpoint_path=checkpoint_path)
-    # train_Mapping(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS, "vae1.ckpt", "vae2.ckpt")
+    # train_VAE1(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS, checkpoint_path=checkpoint_path)
+    # hparams = DEFAULT_HPARAMS
+    # hparams["use_transpose_conv"] = True
+    # train_VAE2(hparams, DEFAULT_TRAIN_PARAMS, checkpoint_path=checkpoint_path)
+    train_params = DEFAULT_TRAIN_PARAMS
+    train_params["batch_size"] = 7
+    train_Mapping(
+        DEFAULT_HPARAMS, train_params, "vae1nodeconv.ckpt", "vae2nodeconv.ckpt"
+    )
     pass

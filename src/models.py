@@ -22,7 +22,11 @@ from utils import save_image, psnr, lpips
 class VAE1(pl.LightningModule):
     def __init__(self, params):
         super().__init__()
-        self.vae = VAENetwork()
+        self.vae = VAENetwork(
+            use_transpose_conv=params["use_transpose_conv"],
+            interp_mode=params["interp_mode"],
+            upsampling_kernel_size=params["upsampling_kernel_size"],
+        )
         self.discriminator = MultiScaleDiscriminator(
             n_scales=2, n_layers=4, in_channels=3
         )
@@ -139,6 +143,7 @@ class VAE1(pl.LightningModule):
                     opt_vae, start_factor=1, end_factor=0, total_iters=100
                 ),
             ],
+            milestones=[self.trainer.max_epochs - 100],
         )
         sch_d = lr_scheduler.SequentialLR(
             opt_d,
@@ -185,7 +190,8 @@ class VAE1(pl.LightningModule):
         )
 
     def on_validation_end(self) -> None:
-        self.sample_images()
+        if self.current_epoch % self.params["sample_images_every_n_epoch"] == 0:
+            self.sample_images()
 
     def sample_images(self):
         # Get sample reconstruction image
@@ -221,6 +227,7 @@ class VAE2(pl.LightningModule):
         self.vae = VAENetwork(
             use_transpose_conv=params["use_transpose_conv"],
             interp_mode=params["interp_mode"],
+            upsampling_kernel_size=params["upsampling_kernel_size"],
         )
         self.discriminator = MultiScaleDiscriminator(
             n_scales=2, n_layers=4, in_channels=3
@@ -379,10 +386,12 @@ class VAE2(pl.LightningModule):
 
 # Mapping from the latent space of VAE1 to the latent space of VAE2
 class Mapping(pl.LightningModule):
-    def __init__(self, params, vae1_encoder, vae2):
+    def __init__(self, params, vae1_ckpt_path, vae2_ckpt_path):
         super().__init__()
-        self.vae1_encoder = vae1_encoder
-        self.vae2 = vae2
+        self.vae1_encoder = VAE1.load_from_checkpoint(
+            vae1_ckpt_path, params=params
+        ).vae.encoder
+        self.vae2 = VAE2.load_from_checkpoint(vae2_ckpt_path, params=params).vae
         self.mapping = MappingNetwork()
         self.discriminator = MultiScaleDiscriminator(
             n_scales=2, n_layers=4, in_channels=3
@@ -409,21 +418,25 @@ class Mapping(pl.LightningModule):
             latent_clean = self.vae2.encode(clean_img)
             restored = self.vae2.decode(latent_clean)
 
-            latent_loss = F.l1_loss(latent_denoised, latent_clean)
+            # latent_loss = F.l1_loss(latent_denoised, latent_clean)
 
             pred_disc_real = self.discriminator(restored)
             pred_disc_fake = self.discriminator(denoised)
-            loss_g_gan = self.loss_gan(pred_disc_fake, target_is_real=True)
-            loss_feat_gan = self.loss_feat_gan(pred_disc_real, pred_disc_fake)
+            # loss_g_gan = self.loss_gan(pred_disc_fake, target_is_real=True)
+            # loss_feat_gan = self.loss_feat_gan(pred_disc_real, pred_disc_fake)
 
-            loss_vgg = self.loss_vgg(denoised, restored)
+            # loss_vgg = self.loss_vgg(denoised, restored)
             mapping_loss = (
-                self.params["lambda1_recons"] * latent_loss
-                + loss_g_gan
-                + (loss_vgg + loss_feat_gan) * self.params["lambda2_feat"]
+                self.params["lambda1_recons"] * F.l1_loss(latent_denoised, latent_clean)
+                + self.loss_gan(pred_disc_fake, target_is_real=True)
+                + (
+                    self.loss_vgg(denoised, restored)
+                    + self.loss_feat_gan(pred_disc_real, pred_disc_fake)
+                )
+                * self.params["lambda2_feat"]
             )
-            self.log("latent_loss", latent_loss, on_step=False, on_epoch=True)
-            self.log("loss_g_gan", loss_g_gan, on_step=False, on_epoch=True)
+            # self.log("latent_loss", latent_loss, on_step=False, on_epoch=True)
+            # self.log("loss_g_gan", loss_g_gan, on_step=False, on_epoch=True)
             self.log(
                 "mapping_loss",
                 mapping_loss,
@@ -431,8 +444,8 @@ class Mapping(pl.LightningModule):
                 on_step=False,
                 on_epoch=True,
             )
-            self.log("loss_feat_gan", loss_feat_gan, on_step=False, on_epoch=True)
-            self.log("loss_vgg", loss_vgg, on_step=False, on_epoch=True)
+            # self.log("loss_feat_gan", loss_feat_gan, on_step=False, on_epoch=True)
+            # self.log("loss_vgg", loss_vgg, on_step=False, on_epoch=True)
 
             self.log(
                 "psnr/train",
@@ -501,7 +514,8 @@ class Mapping(pl.LightningModule):
         pass
 
     def on_validation_end(self) -> None:
-        self.sample_images()
+        if self.current_epoch % self.params["sample_images_every_n_epoch"] == 0:
+            self.sample_images()
 
     def sample_images(self):
         # Get sample reconstruction image

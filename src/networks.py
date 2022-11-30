@@ -14,7 +14,8 @@ class VAENetwork(nn.Module):
         latent_dim=64,
         activation=nn.ReLU,
         use_transpose_conv=True,
-        interp_mode="bilinear",
+        interp_mode="nearest",
+        upsampling_kernel_size=5,
     ):
         super(VAENetwork, self).__init__()
 
@@ -46,10 +47,22 @@ class VAENetwork(nn.Module):
         else:
             decoder += [
                 ResizeConvBlock(
-                    64, 64, 3, 1, "same", activation, interp_mode=interp_mode
+                    64,
+                    64,
+                    upsampling_kernel_size,
+                    1,
+                    "same",
+                    activation,
+                    interp_mode=interp_mode,
                 ),
                 ResizeConvBlock(
-                    64, 64, 3, 1, "same", activation, interp_mode=interp_mode
+                    64,
+                    64,
+                    upsampling_kernel_size,
+                    1,
+                    "same",
+                    activation,
+                    interp_mode=interp_mode,
                 ),
             ]
 
