@@ -62,9 +62,7 @@ def visualize_VAE2(dataset="train", name_list=None, ckpt_path="vae2.ckpt"):
         image = torch.stack(
             [
                 rescale_colors(
-                    F.center_crop(
-                        io.read_image(f"datasets/non_noisy/{name}").float(), 256
-                    )
+                    F.center_crop(io.read_image(f"datasets/{name}").float(), 256)
                 )
                 for name in name_list
             ]
@@ -103,7 +101,8 @@ def evaluate_VAE2_fulldataset(dataset="train", ckpt_path="vae2.ckpt"):
     lpips_metric = []
     for image, _ in iter(dataloader):
         image = image.to(device)
-        recons = VAE2_model.vae.decode(VAE2_model.vae.encode(image))
+        # recons = VAE2_model.vae.decode(VAE2_model.vae.encode(image))
+        recons = VAE2_model(image)
         psnr_metric += psnr(recons, image).detach().cpu().numpy().tolist()
         lpips_metric += lpips(recons, image, device).detach().cpu().numpy().tolist()
 
@@ -174,27 +173,74 @@ def visualize_full_real(dataset="train", full_model=None):
     save_image(img.data, os.path.join("full_vis", "real", f"original.png"))
 
 
+def test_denoising(img_list, mapping_path, vae1_path, vae2_path):
+    with torch.no_grad():
+        full_model = Mapping.load_from_checkpoint(
+            mapping_path,
+            params=DEFAULT_HPARAMS,
+            vae1_ckpt_path=vae1_path,
+            vae2_ckpt_path=vae2_path,
+            device=device,
+        ).to(device)
+
+        for img_path in img_list:
+            img = rescale_colors(io.read_image(f"datasets/test/{img_path}").float())
+            if img.shape[0] == 4:
+                img = img[(0, 1, 2), :, :].unsqueeze(0).to(device)
+            else:
+                img = img.unsqueeze(0).to(device)
+            print(img.shape)
+            denoised, _, _ = full_model(img)
+            save_image(
+                denoised.data,
+                os.path.join("test_denoising_vis", f"{img_path.split('.')[0]}.png"),
+            )
+            del img
+            del denoised
+            torch.cuda.empty_cache()
+
+
 if __name__ == "__main__":
     test_images = [
-        # "Img500.png",
-        # "Img499.png",
-        # "Img498.png",
-        # "Img497.png",
-        # "Img496.png",
-        # "Img495.png",
-        # "Img494.png",
-        # "Img493.png",
-        "Img492.png",
-        "Img491.png",
-        "Img490.png",
-        "Img489.png",
-        "Img488.png",
-        "Img487.png",
-        "Img486.png",
-        "Img485.png",
+        "Flickr500/Img500.png",
+        "Flickr500/Img499.png",
+        "Flickr500/Img498.png",
+        "Flickr500/Img497.png",
+        "Flickr500/Img496.png",
+        "Flickr500/Img495.png",
+        "Flickr500/Img494.png",
+        "Flickr500/Img493.png",
+        "Flickr500/Img492.png",
+        "Flickr500/Img491.png",
+        "Flickr500/Img490.png",
+        "Flickr500/Img489.png",
+        "Flickr500/Img488.png",
+        "Flickr500/Img487.png",
+        "Flickr500/Img486.png",
+        "Flickr500/Img485.png",
     ]
     # visualize_full(dataset="val")
     # visualize_VAE1(dataset="val")
-    visualize_VAE2(dataset="val", name_list=test_images, ckpt_path="vae2nodeconv.ckpt")
+    # DEFAULT_HPARAMS["use_transpose_conv"] = True
+    """ visualize_VAE2(
+        dataset="val", name_list=test_images, ckpt_path="vae2nodeconvpascal.ckpt"
+    ) """
     # evaluate_VAE2_fulldataset("train", "vae2nodeconv.ckpt")
     # evaluate_VAE2_fulldataset("val", "vae2nodeconv.ckpt")
+
+    test_images = [
+        # "a.png",
+        # "b.png",
+        # "c.png",
+        # "d.png",
+        # "e.png",
+        # "f.png",
+        # "g.png",
+        # "h.png",
+        "241.jpg",
+        "389.png",
+        "370.png",
+    ]
+    test_denoising(
+        test_images, "fullnodeconv.ckpt", "vae1nodeconv.ckpt", "vae2nodeconv.ckpt"
+    )

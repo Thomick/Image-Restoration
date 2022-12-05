@@ -271,7 +271,13 @@ class VAE2(pl.LightningModule):
                 + (loss_vgg + loss_feat_gan) * self.params["lambda2_feat"]
             )
 
-            self.log("vae2_loss", vae_loss, prog_bar=True, on_step=False, on_epoch=True)
+            self.log(
+                "vae2_loss",
+                vae_loss,
+                prog_bar=True,
+                on_step=False,
+                on_epoch=True,
+            )
             self.log("loss_g_gan", loss_g_gan, on_step=False, on_epoch=True)
             self.log("loss_kl", loss_kl, on_step=False, on_epoch=True)
             self.log("loss_reconst", loss_reconst, on_step=False, on_epoch=True)

@@ -19,11 +19,11 @@ DEFAULT_HPARAMS = {
 }
 
 DEFAULT_TRAIN_PARAMS = {
-    "max_epochs": 5000,
+    "max_epochs": 200,
     "gpus": 1,
     "log_every_n_steps": 10,
     "check_val_every_n_epoch": 1,
-    "sample_images_every_n_epoch": 100,
+    "sample_images_every_n_epoch": 10,
     "data_dir": "datasets",
     "batch_size": 16,
     "use_perceptual_loss": True,
@@ -108,13 +108,14 @@ def train_Mapping(
 
 
 if __name__ == "__main__":
+    # train_VAE2(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS, checkpoint_path=checkpoint_path)
     # train_VAE1(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS, checkpoint_path=checkpoint_path)
-    # hparams = DEFAULT_HPARAMS
-    # hparams["use_transpose_conv"] = True
-    # train_VAE2(hparams, DEFAULT_TRAIN_PARAMS, checkpoint_path=checkpoint_path)
-    train_params = DEFAULT_TRAIN_PARAMS
+    hparams = DEFAULT_HPARAMS
+    hparams["use_transpose_conv"] = True
+    train_VAE2(hparams, DEFAULT_TRAIN_PARAMS, checkpoint_path=checkpoint_path)
+    """ train_params = DEFAULT_TRAIN_PARAMS
     train_params["batch_size"] = 7
     train_Mapping(
         DEFAULT_HPARAMS, train_params, "vae1nodeconv.ckpt", "vae2nodeconv.ckpt"
-    )
+    ) """
     pass

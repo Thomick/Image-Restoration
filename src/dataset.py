@@ -52,7 +52,13 @@ class VanillaDataset(Dataset):
     def __init__(self, data_dir: str, split: str, split_ratio=0.75):
         # load images
         self.data_dir = Path(data_dir)
-        imgs = sorted([str(f) for f in self.data_dir.iterdir() if f.suffix == ".png"])
+        imgs = sorted(
+            [
+                str(f)
+                for f in self.data_dir.iterdir()
+                if f.suffix == ".png" or f.suffix == ".jpg"
+            ]
+        )
 
         self.imgs = (
             imgs[: int(len(imgs) * split_ratio)]
@@ -188,6 +194,7 @@ class GenericDataModule(LightningDataModule):
             )
         else:
             raise Exception("Invalid phase")
+        print("Train dataset size : ", len(self.train_dataset))
 
     def train_dataloader(self):
         return DataLoader(
