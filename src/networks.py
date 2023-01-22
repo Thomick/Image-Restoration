@@ -16,6 +16,7 @@ class VAENetwork(nn.Module):
         use_transpose_conv=True,
         interp_mode="nearest",
         upsampling_kernel_size=5,
+        num_downscale=2,
     ):
         super(VAENetwork, self).__init__()
 
@@ -41,8 +42,7 @@ class VAENetwork(nn.Module):
         ]
         if use_transpose_conv:
             decoder += [
-                DeconvBlock(64, 64, 4, 2, 1, activation),
-                DeconvBlock(64, 64, 4, 2, 1, activation),
+                DeconvBlock(64, 64, 4, 2, 1, activation) for _ in range(num_downscale)
             ]
         else:
             decoder += [
@@ -54,16 +54,8 @@ class VAENetwork(nn.Module):
                     "same",
                     activation,
                     interp_mode=interp_mode,
-                ),
-                ResizeConvBlock(
-                    64,
-                    64,
-                    upsampling_kernel_size,
-                    1,
-                    "same",
-                    activation,
-                    interp_mode=interp_mode,
-                ),
+                )
+                for _ in range(num_downscale)
             ]
 
         decoder += [
@@ -77,6 +69,9 @@ class VAENetwork(nn.Module):
 
     def decode(self, z):
         return self.decoder(z)
+
+    def encode_decode(self, x):
+        return self.decode(self.encode(x))
 
     def forward(self, x):
         latent = self.encode(x)
