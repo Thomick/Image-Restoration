@@ -392,21 +392,31 @@ class VAE2(pl.LightningModule):
 
 # Mapping from the latent space of VAE1 to the latent space of VAE2
 class Mapping(pl.LightningModule):
-    def __init__(self, params, vae1_ckpt_path, vae2_ckpt_path):
+    def __init__(
+        self, params, vae1_ckpt_path=None, vae2_ckpt_path=None, inference_mode=False
+    ):
         super().__init__()
-        self.vae1_encoder = VAE1.load_from_checkpoint(
-            vae1_ckpt_path, params=params
-        ).vae.encoder
-        self.vae2 = VAE2.load_from_checkpoint(vae2_ckpt_path, params=params).vae
+        if vae1_ckpt_path is None:
+            self.vae1_encoder = VAE1(params).vae.encoder
+        else:
+            self.vae1_encoder = VAE1.load_from_checkpoint(
+                vae1_ckpt_path, params=params
+            ).vae.encoder
+        if vae2_ckpt_path is None:
+            self.vae2 = VAE2(params).vae
+        else:
+            self.vae2 = VAE2.load_from_checkpoint(vae2_ckpt_path, params=params).vae
         self.mapping = MappingNetwork()
-        self.discriminator = MultiScaleDiscriminator(
-            n_scales=2, n_layers=4, in_channels=3
-        )
+        if inference_mode == False:
+            self.discriminator = MultiScaleDiscriminator(
+                n_scales=2, n_layers=4, in_channels=3
+            )
+            self.loss_vgg = VGGLoss()
+            self.loss_gan = GANLoss()
+            self.loss_feat_gan = DiscriminatorFeatureLoss()
+        self.save_hyperparameters()
+
         self.params = params
-        self.loss_vgg = VGGLoss()
-        self.loss_gan = GANLoss()
-        self.loss_feat_gan = DiscriminatorFeatureLoss()
-        self.save_hyperparameters(ignore=["vae1_encoder", "vae2"])
 
     def forward(self, x):
         latent1 = self.vae1_encoder(x)
