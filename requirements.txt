@@ -1,5 +1,5 @@
 numpy
-Pillow
 torch
 torchvision
 pytorch_lightning
+lpips
