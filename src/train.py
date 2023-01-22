@@ -3,8 +3,8 @@ from models import VAE2, VAE1, Mapping
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.progress import TQDMProgressBar
 
-# Set to None to train from scratch
-checkpoint_path = None
+# TODO : Remove hardcoded paths
+# TODO : Add command line arguments
 
 DEFAULT_HPARAMS = {
     "lr": 2e-4,
@@ -19,7 +19,7 @@ DEFAULT_HPARAMS = {
 }
 
 DEFAULT_TRAIN_PARAMS = {
-    "max_epochs": 200,
+    "max_epochs": 300,
     "gpus": 1,
     "log_every_n_steps": 10,
     "check_val_every_n_epoch": 1,
@@ -28,9 +28,6 @@ DEFAULT_TRAIN_PARAMS = {
     "batch_size": 16,
     "use_perceptual_loss": True,
 }
-
-
-# TODO : Allow to resume training
 
 
 def train_VAE1(
@@ -84,6 +81,7 @@ def train_Mapping(
     train_params=DEFAULT_TRAIN_PARAMS,
     vae1_ckpt_path="vae1.ckpt",
     vae2_ckpt_path="vae2.ckpt",
+    checkpoint_path=None,
 ):
     params = {**hparams, **train_params}
     mapping_model = Mapping(params, vae1_ckpt_path, vae2_ckpt_path)
@@ -104,18 +102,27 @@ def train_Mapping(
         check_val_every_n_epoch=train_params["check_val_every_n_epoch"],
     )
 
-    trainer.fit(mapping_model, data_module)
+    trainer.fit(mapping_model, data_module, ckpt_path=checkpoint_path)
 
 
 if __name__ == "__main__":
+
+    # Set to None to train from scratch
+    checkpoint_path = "lightning_logs/version_18/checkpoints/epoch=88-step=326630.ckpt"
+
     # train_VAE2(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS, checkpoint_path=checkpoint_path)
     # train_VAE1(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS, checkpoint_path=checkpoint_path)
     hparams = DEFAULT_HPARAMS
-    hparams["use_transpose_conv"] = True
-    train_VAE2(hparams, DEFAULT_TRAIN_PARAMS, checkpoint_path=checkpoint_path)
-    """ train_params = DEFAULT_TRAIN_PARAMS
+    hparams["use_transpose_conv"] = False
+    # train_VAE1(hparams, DEFAULT_TRAIN_PARAMS, checkpoint_path=checkpoint_path)
+    train_params = DEFAULT_TRAIN_PARAMS
     train_params["batch_size"] = 7
+    train_params["max_epochs"] = 100
     train_Mapping(
-        DEFAULT_HPARAMS, train_params, "vae1nodeconv.ckpt", "vae2nodeconv.ckpt"
-    ) """
+        hparams,
+        train_params,
+        "vae1nodeconvpascal.ckpt",
+        "vae2nodeconvpascal.ckpt",
+        checkpoint_path=checkpoint_path,
+    )
     pass
