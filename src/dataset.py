@@ -80,7 +80,13 @@ class MappingDataset(Dataset):
     def __init__(self, data_dir: str, split: str, split_ratio=0.75):
         # Load images
         self.data_dir = Path(data_dir + "/non_noisy")
-        imgs = sorted([str(f) for f in self.data_dir.iterdir() if f.suffix == ".png" or f.suffix == ".jpg"])
+        imgs = sorted(
+            [
+                str(f)
+                for f in self.data_dir.iterdir()
+                if f.suffix == ".png" or f.suffix == ".jpg"
+            ]
+        )
 
         self.imgs = (
             imgs[: int(len(imgs) * split_ratio)]
@@ -105,7 +111,11 @@ class PhaseADataset(Dataset):
         # Load noisy images
         real_data_dir = Path(data_dir + "/noisy")
         real_imgs = sorted(
-            [str(f) for f in real_data_dir.iterdir() if f.suffix == ".png" or f.suffix == ".jpg"]
+            [
+                str(f)
+                for f in real_data_dir.iterdir()
+                if f.suffix == ".png" or f.suffix == ".jpg"
+            ]
         )
 
         real_imgs = (
@@ -117,7 +127,11 @@ class PhaseADataset(Dataset):
         # Load clean images to which we will add synthetic noise
         data_for_synthesis_dir = Path(data_dir + "/non_noisy")
         imgs_for_synthesis = sorted(
-            [str(f) for f in data_for_synthesis_dir.iterdir() if f.suffix == ".png" or f.suffix == ".jpg"]
+            [
+                str(f)
+                for f in data_for_synthesis_dir.iterdir()
+                if f.suffix == ".png" or f.suffix == ".jpg"
+            ]
         )
         imgs_for_synthesis = (
             imgs_for_synthesis[: int(len(imgs_for_synthesis) * split_ratio)]
