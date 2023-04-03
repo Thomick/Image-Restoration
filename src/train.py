@@ -108,7 +108,7 @@ def train_Mapping(
 if __name__ == "__main__":
 
     # Set to None to train from scratch
-    checkpoint_path = "lightning_logs/version_18/checkpoints/epoch=88-step=326630.ckpt"
+    checkpoint_path = None
 
     # train_VAE2(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS, checkpoint_path=checkpoint_path)
     # train_VAE1(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS, checkpoint_path=checkpoint_path)

@@ -14,3 +14,16 @@ WAN, Ziyu, ZHANG, Bo, CHEN, Dongdong, et al. Old photo restoration via deep late
 - `src/dataset.py` contains the dataset builders and the dataloaders
 
 - `src/main.py` is used to coordinate the experiments and training sessions
+
+- `src/resize.py` is a small script that downscales all the images in a folder by a certain ratio
+
+- `src/evaluate.py` contains the functions to evaluate the model
+
+Both `train.py` and `evaluate.py` can also be run as scripts to perform the training and evaluation of a model or be imported as modules to be used in other scripts. An example of the usage of the functions can be found at the bottom of the files. Please see the docstring of each function for more information and `README_PRACTICAL.md` for a walkthrough of the training and evaluation process.
+
+## Usage
+The code was tested with python 3.8. and torch 1.12.1. The main requirements can be installed with `pip install -r requirements.txt`.
+The current version requires to set up the training manually in `src/train.py` and the evaluation in `src/evaluate.py`. The scripts can then be run using the following command:
+```python3 src/train.py```
+or
+```python3 src/evaluate.py```
