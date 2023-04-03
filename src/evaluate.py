@@ -13,9 +13,10 @@ import tqdm
 device = "cpu"
 
 
-# TODO: Remove params unnecessary params when loading the checkpoint
+# TODO: Remove unnecessary params when loading the checkpoint
 # TODO: Remove hardcoded paths
 # TODO: Add command line arguments
+# TODO: Clean evaluate.py
 
 # Load a checkpoint of VAE1 and visualize the results on one batch of either the train or validation set
 def visualize_VAE1(dataset="train"):

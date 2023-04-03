@@ -1,3 +1,5 @@
+# Resize all the images of a directory to 1/3.5 of the original size and append "DS"(downscaled) to the filename.
+
 import cv2
 import os
 

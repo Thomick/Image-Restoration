@@ -48,6 +48,7 @@ random_degradation = transforms.RandomOrder(
 )
 
 
+# Dataset class that load 256x256 center cropped images from a directory (For VAE2 training and visualization)
 class VanillaDataset(Dataset):
     def __init__(self, data_dir: str, split: str, split_ratio=0.75):
         # load images
@@ -76,6 +77,8 @@ class VanillaDataset(Dataset):
         return rescale_colors(img), 0.0
 
 
+# Dataset class that load 256x256 center cropped images from a directory (For Mapping training) and add random degradation.
+# The dataset is composed of pairs of clean and noisy images.
 class MappingDataset(Dataset):
     def __init__(self, data_dir: str, split: str, split_ratio=0.75):
         # Load images
@@ -105,6 +108,9 @@ class MappingDataset(Dataset):
         return torch.stack([rescale_colors(img), rescale_colors(noisy_img)]), 0.0
 
 
+# Dataset class that load 256x256 center cropped images from a noisy image directory and a clean image directory (For VAE1 training).
+# The clean images are degraded with noise.
+# The dataset is composed of pairs of noisy images and a label indicating if the noise of the image is synthetic or real.
 class PhaseADataset(Dataset):
     def __init__(self, data_dir: str, split: str, split_ratio=0.75):
 

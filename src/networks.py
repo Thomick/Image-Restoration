@@ -16,8 +16,23 @@ class VAENetwork(nn.Module):
         use_transpose_conv=True,
         interp_mode="nearest",
         upsampling_kernel_size=5,
-        num_downscale=2,
     ):
+        """
+        Parameters
+        ----------
+        hidden_dim : int, optional
+            Number of channels in the hidden layers, by default 64
+        latent_dim : int, optional
+            Number of channels in the latent layer, by default 64
+        activation : nn.Module, optional
+            Activation function, by default nn.ReLU
+        use_transpose_conv : bool, optional
+            Whether to use transpose convolution or resize convolution, by default True
+        interp_mode : str, optional
+            Interpolation mode for resize convolution, either "nearest" or "bilinear", by default "nearest"
+        upsampling_kernel_size : int, optional
+            Kernel size for resize convolution, by default 5
+        """
         super(VAENetwork, self).__init__()
 
         activation = nn.ReLU(inplace=True)
@@ -42,7 +57,8 @@ class VAENetwork(nn.Module):
         ]
         if use_transpose_conv:
             decoder += [
-                DeconvBlock(64, 64, 4, 2, 1, activation) for _ in range(num_downscale)
+                DeconvBlock(64, 64, 4, 2, 1, activation),
+                DeconvBlock(64, 64, 4, 2, 1, activation),
             ]
         else:
             decoder += [
@@ -54,8 +70,16 @@ class VAENetwork(nn.Module):
                     "same",
                     activation,
                     interp_mode=interp_mode,
-                )
-                for _ in range(num_downscale)
+                ),
+                ResizeConvBlock(
+                    64,
+                    64,
+                    upsampling_kernel_size,
+                    1,
+                    "same",
+                    activation,
+                    interp_mode=interp_mode,
+                ),
             ]
 
         decoder += [
@@ -135,8 +159,17 @@ class DeconvBlock(nn.Sequential):
         super(DeconvBlock, self).__init__(*model)
 
 
+# Utility layer that performs the interpolation for a given scale factor
 class Interpolate(nn.Module):
     def __init__(self, scale_factor, mode="bilinear"):
+        """
+        Parameters
+        ----------
+        scale_factor : int
+            Scale factor for interpolation, the output size is calculated as input_size * scale_factor
+        mode : str, optional
+            Interpolation mode, either "nearest" or "bilinear", by default "bilinear"
+        """
         super(Interpolate, self).__init__()
         self.interp = nn.functional.interpolate
         self.scale_factor = scale_factor
@@ -147,6 +180,7 @@ class Interpolate(nn.Module):
         return x
 
 
+# Upscaling layer that performs an upsampling followed by a convolutional layer
 class ResizeConvBlock(nn.Sequential):
     def __init__(
         self,
@@ -159,6 +193,26 @@ class ResizeConvBlock(nn.Sequential):
         use_norm=True,
         interp_mode="bilinear",
     ):
+        """
+        Parameters
+        ----------
+        in_channels : int
+            Number of input channels
+        out_channels : int
+            Number of output channels
+        kernel_size : int
+            Kernel size for final convolution
+        stride : int
+            Stride for final convolution
+        padding : int
+            Padding for final convolution
+        activation : nn.Module, optional
+            Activation function, by default nn.ReLU(inplace=True)
+        use_norm : bool, optional
+            Whether to use a normalization layer, by default True
+        interp_mode : str, optional
+            Interpolation mode for upsampling, either "nearest" or "bilinear", by default "bilinear"
+        """
         model = [
             Interpolate(2, interp_mode),
             nn.Conv2d(
@@ -282,6 +336,7 @@ class NonLocalBlock2d(nn.Module):
         return z
 
 
+# MultiScaleDiscriminator downsamples the input image by a factor of 2 multiple times and apply a discriminator at each scale
 class MultiScaleDiscriminator(nn.Module):
     def __init__(self, n_scales=2, n_layers=4, in_channels=3):
         super(MultiScaleDiscriminator, self).__init__()
@@ -297,6 +352,7 @@ class MultiScaleDiscriminator(nn.Module):
         return res
 
 
+# Discriminator based on LSGAN discriminator
 class Discriminator(nn.Module):
     def __init__(self, n_layers=4, in_channels=3):
         super(Discriminator, self).__init__()
@@ -422,6 +478,7 @@ class GANLoss(nn.Module):
         return F.mse_loss(x[-1], target_tensor)
 
 
+# Compute the feature loss between the discriminator features of the real and fake images
 class DiscriminatorFeatureLoss:
     def __call__(self, x, y):
         if isinstance(x[0], list):

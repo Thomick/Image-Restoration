@@ -33,6 +33,18 @@ DEFAULT_TRAIN_PARAMS = {
 def train_VAE1(
     hparams=DEFAULT_HPARAMS, train_params=DEFAULT_TRAIN_PARAMS, checkpoint_path=None
 ):
+    """
+    Train VAE1 model. Periodically saves the trained model to a checkpoint file
+
+    Parameters
+    ----------
+    hparams : dict, optional
+        Hyperparameters, by default DEFAULT_HPARAMS
+    train_params : dict, optional
+        Training parameters, by default DEFAULT_TRAIN_PARAMS
+    checkpoint_path : str, optional
+        Path to checkpoint, by default None. If None, train from scratch. If a path is provided, the model will be loaded from the checkpoint and resume training but a new checkpoint path will be created
+    """
     params = {**hparams, **train_params}
     VAE1_model = VAE1(params)
     print(VAE1_model)
@@ -49,6 +61,7 @@ def train_VAE1(
         log_every_n_steps=train_params["log_every_n_steps"],
         check_val_every_n_epoch=train_params["check_val_every_n_epoch"],
     )
+    print(f"Checkpoint path: {trainer.ckpt_path}")
 
     trainer.fit(VAE1_model, data_module, ckpt_path=checkpoint_path)
 
@@ -56,6 +69,18 @@ def train_VAE1(
 def train_VAE2(
     hparams=DEFAULT_HPARAMS, train_params=DEFAULT_TRAIN_PARAMS, checkpoint_path=None
 ):
+    """
+    Train VAE2 model. Periodically saves the trained model to a checkpoint file
+
+    Parameters
+    ----------
+    hparams : dict, optional
+        Hyperparameters, by default DEFAULT_HPARAMS
+    train_params : dict, optional
+        Training parameters, by default DEFAULT_TRAIN_PARAMS
+    checkpoint_path : str, optional
+        Path to checkpoint, by default None. If None, train from scratch. If a path is provided, the model will be loaded from the checkpoint and resume training but a new checkpoint path will be created
+    """
     params = {**hparams, **train_params}
     VAE2_model = VAE2(params)
     print(VAE2_model)
@@ -72,6 +97,7 @@ def train_VAE2(
         log_every_n_steps=train_params["log_every_n_steps"],
         check_val_every_n_epoch=train_params["check_val_every_n_epoch"],
     )
+    print(f"Checkpoint path: {trainer.ckpt_path}")
 
     trainer.fit(VAE2_model, data_module, ckpt_path=checkpoint_path)
 
@@ -83,6 +109,18 @@ def train_Mapping(
     vae2_ckpt_path="vae2.ckpt",
     checkpoint_path=None,
 ):
+    """
+    Train mapping model. Periodically saves the trained model to a checkpoint file
+
+    Parameters
+    ----------
+    hparams : dict, optional
+        Hyperparameters, by default DEFAULT_HPARAMS
+    train_params : dict, optional
+        Training parameters, by default DEFAULT_TRAIN_PARAMS
+    checkpoint_path : str, optional
+        Path to checkpoint, by default None. If None, train from scratch. If a path is provided, the model will be loaded from the checkpoint and resume training but a new checkpoint path will be created
+    """
     params = {**hparams, **train_params}
     mapping_model = Mapping(params, vae1_ckpt_path, vae2_ckpt_path)
     print(mapping_model)
@@ -101,6 +139,7 @@ def train_Mapping(
         log_every_n_steps=train_params["log_every_n_steps"],
         check_val_every_n_epoch=train_params["check_val_every_n_epoch"],
     )
+    print(f"Checkpoint path: {trainer.ckpt_path}")
 
     trainer.fit(mapping_model, data_module, ckpt_path=checkpoint_path)
 
