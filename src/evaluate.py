@@ -13,10 +13,8 @@ import tqdm
 device = "cpu"
 
 
-# TODO: Remove unnecessary params when loading the checkpoint
 # TODO: Remove hardcoded paths
 # TODO: Add command line arguments
-# TODO: Clean evaluate.py
 
 # Load a checkpoint of VAE1 and visualize the results on one batch of either the train or validation set
 def visualize_VAE1(dataset="train"):
@@ -241,10 +239,10 @@ if __name__ == "__main__":
     ]
     # visualize_full(dataset="val")
     # visualize_VAE1(dataset="val")
-    DEFAULT_HPARAMS["use_transpose_conv"] = True
+    """DEFAULT_HPARAMS["use_transpose_conv"] = True
     visualize_VAE2(
         dataset="val", name_list=test_images, ckpt_path="vae2originalpascal.ckpt"
-    )
+    )"""
     # evaluate_VAE2_fulldataset("train", "vae2nodeconv.ckpt")
     # evaluate_VAE2_fulldataset("val", "vae2nodeconv.ckpt")
 

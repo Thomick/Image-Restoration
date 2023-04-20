@@ -146,14 +146,20 @@ def train_Mapping(
 
 if __name__ == "__main__":
 
-    # Set to None to train from scratch
-    checkpoint_path = None
+    # Set checkpoint_path to None to train from scratch or give a path to a checkpoint to resume training
+    # checkpoint_path = None
 
     # train_VAE2(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS, checkpoint_path=checkpoint_path)
     # train_VAE1(DEFAULT_HPARAMS, DEFAULT_TRAIN_PARAMS, checkpoint_path=checkpoint_path)
+
+    """
+    Example of training of the VAE1 model without transpose convolutions
     hparams = DEFAULT_HPARAMS
     hparams["use_transpose_conv"] = False
-    # train_VAE1(hparams, DEFAULT_TRAIN_PARAMS, checkpoint_path=checkpoint_path)
+    train_VAE1(hparams, DEFAULT_TRAIN_PARAMS, checkpoint_path=checkpoint_path)
+    """
+    """
+    # Example of training of the mapping model
     train_params = DEFAULT_TRAIN_PARAMS
     train_params["batch_size"] = 7
     train_params["max_epochs"] = 100
@@ -163,5 +169,6 @@ if __name__ == "__main__":
         "vae1nodeconvpascal.ckpt",
         "vae2nodeconvpascal.ckpt",
         checkpoint_path=checkpoint_path,
-    )
+    )"""
+
     pass
