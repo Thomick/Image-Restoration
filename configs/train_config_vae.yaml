@@ -1,0 +1,27 @@
+# Model parameters
+use_transpose_conv: False
+interp_mode: nearest
+upsampling_kernel_size: 5
+
+# Loss parameters
+a_reconst: 10.
+lambda1_recons: 60.
+lambda2_feat: 10.
+use_perceptual_loss: True
+
+# Optimizer parameters
+lr: 2.e-4
+b1: 0.5
+b2: 0.999
+
+# Training setup
+max_epochs: 1
+batch_size: 16
+gpus: [1] # Indices of the gpus to use for training (e.g., [0,1] uses the first two gpus)
+log_every_n_steps: 16
+check_val_every_n_epoch: 1
+sample_images_every_n_epoch: 10
+
+# Dataset directory
+data_dir: datasets
+
