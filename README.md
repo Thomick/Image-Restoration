@@ -5,7 +5,11 @@ Model based on the paper :
 WAN, Ziyu, ZHANG, Bo, CHEN, Dongdong, et al. Old photo restoration via deep latent space translation. IEEE Transactions on Pattern Analysis and Machine Intelligence, 2022. [Link](https://arxiv.org/abs/2009.07047)
 
 ## Structure
-- `src/train.py` contains the fonction to set up training of the different modules/models.
+- `src/train.py` is a script to set up training of the different modules/models.
+
+- `src/inference.py` is a script that denoises images from a folder using a trained model
+
+- `src/evaluate.py` contains functions to evaluate a trained model (can be modified and used as a script to perform the evaluation of a model)
 
 - `src/models.py` contains the actual model classes (the 3 modules/models used in the paper are named VAE1, VAE2 and Mapping).
 
@@ -13,17 +17,25 @@ WAN, Ziyu, ZHANG, Bo, CHEN, Dongdong, et al. Old photo restoration via deep late
 
 - `src/dataset.py` contains the dataset builders and the dataloaders
 
-- `src/main.py` is used to coordinate the experiments and training sessions
+- `src/utils.py` contains the functions for image processing and evaluation
 
-- `src/resize.py` is a small script that downscales all the images in a folder by a certain ratio
+- `src/config.py` contains the configuration parameters for the training and evaluation
 
-- `src/evaluate.py` contains the functions to evaluate the model
-
-Both `train.py` and `evaluate.py` can also be run as scripts to perform the training and evaluation of a model or be imported as modules to be used in other scripts. An example of the usage of the functions can be found at the bottom of the files. Please see the docstring of each function for more information and `README_PRACTICAL.md` for a walkthrough of the training and evaluation process.
 
 ## Usage
-The code was tested with python 3.8. and torch 1.12.1. The main requirements can be installed with `pip install -r requirements.txt`.
-The current version requires to set up the training manually in `src/train.py` and the evaluation in `src/evaluate.py`. The scripts can then be run using the following command:
-```python3 src/train.py```
-or
-```python3 src/evaluate.py```
+The code was tested with python 3.8.0. To install the required packages, run the following command:
+```
+pip install -r requirements.txt
+```
+
+The model consists in three modules that must be trained separately (VAE1, VAE2 and Mapping). VAE1 and VAE2 can be trained independently, but the mapping requires trained VAE1 and VAE2. The training of the mapping outputs the full model which can then be used for inference. The training of each module is done by running the `train.py` script with the corresponding configuration file (see ```train.py --help```). Here is an example of command for each module:
+```
+python train.py --cfg-path configs/vae.yaml --stage vae1 --output-path checkpoints/vae1.ckpt
+python train.py --cfg-path configs/vae.yaml --stage vae2 --output-path checkpoints/vae2.ckpt
+python train.py --cfg-path configs/mapping.yaml --stage mapping --output-path checkpoints/full.ckpt
+```
+
+Given a trained model, the inference can be performed on a folder of images using the `inference.py` script. The script takes as input a folder containing the images to denoise, a folder to save the denoised images and the path to the full model:
+```
+python inference.py -i <input_folder> -o <output_folder> -m <fullmodel_path>
+```
