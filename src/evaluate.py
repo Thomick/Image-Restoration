@@ -1,3 +1,6 @@
+# Some utility functions used during developement to evaluate the models and visualize the results.
+# Examples are provided at the end of the file.
+
 from dataset import GenericDataModule
 from models import VAE2, VAE1, Mapping
 import torch
@@ -7,50 +10,12 @@ import numpy as np
 from utils import psnr, save_image, lpips, rescale_colors
 from torchvision.transforms import functional as F
 from torchvision import io
-from train import DEFAULT_HPARAMS
-import tqdm
 
 device = "cpu"
 
 
-# TODO: Remove hardcoded paths
-# TODO: Add command line arguments
-
-# Load a checkpoint of VAE1 and visualize the results on one batch of either the train or validation set
-def visualize_VAE1(dataset="train"):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    VAE1_model = VAE1.load_from_checkpoint(
-        "vae1.ckpt", params=DEFAULT_HPARAMS, device=device
-    ).to(device)
-
-    data_module = GenericDataModule("datasets", batch_size=32, phase="A")
-    data_module.setup()
-    if dataset == "train":
-        dataloader = data_module.train_dataloader()
-    elif dataset == "val":
-        dataloader = data_module.val_dataloader()
-    else:
-        raise Exception("Invalid dataset")
-    image, _ = next(iter(dataloader))
-    image = image.to(device)
-    recons = VAE1_model.vae.decode(VAE1_model.vae.encode(image))
-    Path(f"vae1_vis").mkdir(exist_ok=True, parents=True)
-    save_image(recons.data, os.path.join("vae1_vis", f"recons.png"))
-    save_image(image.data, os.path.join("vae1_vis", f"input.png"))
-    np.savetxt("vae1_vis/psnr.txt", psnr(recons, image).detach().cpu().numpy())
-
-
-# Load a checkpoint of VAE2 and visualize the results on one batch of either the train or validation set
-def visualize_VAE2(dataset="train", name_list=None, ckpt_path="vae2.ckpt"):
-
-    VAE2_model = VAE2.load_from_checkpoint(
-        ckpt_path, params=DEFAULT_HPARAMS, device=device
-    ).to(device)
-
-    print(VAE2_model)
-
-    if name_list == None:
+def load_images(dataset="train", image_list=None, phase="A"):
+    if image_list == None:
         data_module = GenericDataModule("datasets", batch_size=32, phase="B")
         data_module.setup()
         if dataset == "train":
@@ -66,10 +31,31 @@ def visualize_VAE2(dataset="train", name_list=None, ckpt_path="vae2.ckpt"):
                 rescale_colors(
                     F.center_crop(io.read_image(f"datasets/{name}").float(), 256)
                 )
-                for name in name_list
+                for name in image_list
             ]
         )
     image = image.to(device)
+    return image
+
+
+# Load a checkpoint of VAE1 and visualize the results on one batch of either the train or validation set
+def visualize_VAE1(dataset="train", name_list=None, ckpt_path="vae1.ckpt"):
+    VAE1_model = VAE1.load_from_checkpoint("vae1.ckpt", device=device).to(device)
+
+    image = load_images(dataset, name_list, phase="A")
+    recons = VAE1_model.vae.decode(VAE1_model.vae.encode(image))
+    Path(f"vae1_vis").mkdir(exist_ok=True, parents=True)
+    save_image(recons.data, os.path.join("vae1_vis", f"recons.png"))
+    save_image(image.data, os.path.join("vae1_vis", f"input.png"))
+    np.savetxt("vae1_vis/psnr.txt", psnr(recons, image).detach().cpu().numpy())
+
+
+# Load a checkpoint of VAE2 and visualize the results on one batch of either the train or validation set
+def visualize_VAE2(dataset="train", name_list=None, ckpt_path="vae2.ckpt"):
+    VAE2_model = VAE2.load_from_checkpoint(ckpt_path, device=device).to(device)
+
+    image = load_images(dataset, name_list, phase="B")
+
     recons = VAE2_model.vae.decode(VAE2_model.vae.encode(image))
     Path(f"vae2_vis").mkdir(exist_ok=True, parents=True)
     save_image(recons.data, os.path.join("vae2_vis", f"recons.png"))
@@ -85,9 +71,7 @@ def visualize_VAE2(dataset="train", name_list=None, ckpt_path="vae2.ckpt"):
 
 def evaluate_VAE2_fulldataset(dataset="train", ckpt_path="vae2.ckpt"):
 
-    VAE2_model = VAE2.load_from_checkpoint(
-        ckpt_path, params=DEFAULT_HPARAMS, device=device
-    ).to(device)
+    VAE2_model = VAE2.load_from_checkpoint(ckpt_path, device=device).to(device)
 
     print(VAE2_model)
 
@@ -113,20 +97,9 @@ def evaluate_VAE2_fulldataset(dataset="train", ckpt_path="vae2.ckpt"):
 
 
 # Load a checkpoint of the full model and visualize the results on one batch of either the train or validation set
-def visualize_full(dataset="train"):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    vae1_encoder = VAE1.load_from_checkpoint(
-        "vae1.ckpt", params=DEFAULT_HPARAMS, device="cpu"
-    ).vae.encoder
-    vae2 = VAE2.load_from_checkpoint(
-        "vae2.ckpt", params=DEFAULT_HPARAMS, device="cpu"
-    ).vae
+def visualize_full(dataset="train", ckpt_path="full.ckpt"):
     full_model = Mapping.load_from_checkpoint(
-        "full.ckpt",
-        params=DEFAULT_HPARAMS,
-        vae1_encoder=vae1_encoder,
-        vae2=vae2,
+        ckpt_path,
         device=device,
     ).to(device)
     visualize_full_synth(dataset, full_model)
@@ -135,8 +108,6 @@ def visualize_full(dataset="train"):
 
 # Visualize the results of the full model on one batch of images from the synthetic dataset
 def visualize_full_synth(dataset="train", full_model=None):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-
     data_module = GenericDataModule("datasets", batch_size=8, phase="Mapping")
     data_module.setup()
     if dataset == "train":
@@ -158,7 +129,6 @@ def visualize_full_synth(dataset="train", full_model=None):
 
 # Visualize the results of the full model on one batch of images from the real noisy image dataset
 def visualize_full_real(dataset="train", full_model=None):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
     data_module = GenericDataModule("datasets/noisy", batch_size=8, phase="Vanilla")
     data_module.setup()
     if dataset == "train":
@@ -173,33 +143,6 @@ def visualize_full_real(dataset="train", full_model=None):
     Path(f"full_vis/real").mkdir(exist_ok=True, parents=True)
     save_image(denoised.data, os.path.join("full_vis", "real", f"denoised.png"))
     save_image(img.data, os.path.join("full_vis", "real", f"original.png"))
-
-
-def test_denoising(img_list, mapping_path):
-    with torch.no_grad():
-        full_model = Mapping.load_from_checkpoint(
-            mapping_path,
-            inference_mode=True,
-            vae1_ckpt_path=None,
-            vae2_ckpt_path=None,
-            strict=False,
-        ).to(device)
-
-        for img_path in img_list:
-            img = rescale_colors(io.read_image(f"datasets/test/{img_path}").float())
-            if img.shape[0] == 4:
-                img = img[(0, 1, 2), :, :].unsqueeze(0).to(device)
-            else:
-                img = img.unsqueeze(0).to(device)
-            print(img.shape)
-            denoised, _, _ = full_model(img)
-            save_image(
-                denoised.data,
-                os.path.join("test_denoising_vis", f"{img_path.split('.')[0]}.png"),
-            )
-            del img
-            del denoised
-            torch.cuda.empty_cache()
 
 
 def test_reconstruction(img_list, vae2_path):
@@ -227,6 +170,8 @@ def test_reconstruction(img_list, vae2_path):
 
 
 if __name__ == "__main__":
+    # visualize_full(dataset="val", ckpt_path="full.ckpt")
+    # visualize_VAE1(dataset="val", ckpt_path="vae1.ckpt")
     test_images = [
         "Flickr500/Img500.png",
         "Flickr500/Img499.png",
@@ -237,35 +182,12 @@ if __name__ == "__main__":
         "Flickr500/Img494.png",
         "Flickr500/Img493.png",
     ]
-    # visualize_full(dataset="val")
-    # visualize_VAE1(dataset="val")
-    """DEFAULT_HPARAMS["use_transpose_conv"] = True
-    visualize_VAE2(
-        dataset="val", name_list=test_images, ckpt_path="vae2originalpascal.ckpt"
-    )"""
+    # visualize_VAE2(dataset="val", name_list=test_images, ckpt_path="vae2.ckpt")
+
     # evaluate_VAE2_fulldataset("train", "vae2nodeconv.ckpt")
     # evaluate_VAE2_fulldataset("val", "vae2nodeconv.ckpt")
 
     test_images = [
-        "a.png",
-        "b.png",
-        "c.png",
-        "d.png",
-        "e.png",
-        "f.png",
-        "g.png",
-        "h.png",
-        # "241.jpg",
-        "389.png",
-        "370.png",
-        "Img500.png",
-        "Img499.png",
-        "Img498.png",
-        "Img497.png",
-        "Img496.png",
-        "Img495.png",
-        "Img494.png",
-        "Img493.png",
         "Img492.png",
         "Img491.png",
         "Img490.png",
@@ -275,8 +197,4 @@ if __name__ == "__main__":
         "Img486.png",
         "Img485.png",
     ]
-    """
-    test_denoising(
-        test_images, "fullnodeconv.ckpt", "vae1nodeconv.ckpt", "vae2nodeconv.ckpt"
-    )"""
-    # test_reconstruction(test_images, "vae2originalpascal.ckpt")
+    # test_reconstruction(test_images, "checkpoints/vae2originalpascal.ckpt")

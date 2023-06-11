@@ -1,3 +1,7 @@
+# Utility functions for image processing and evaluation
+
+import cv2
+import os
 import torch
 from pathlib import Path
 import torchvision.utils as vutils
@@ -39,3 +43,18 @@ def lpips(imgs1, imgs2, device="cuda"):
         lpips_model = lpips_module.LPIPS(net="vgg", verbose=False)
     lpips_model.to(device)
     return lpips_model.forward(imgs1, imgs2).squeeze()
+
+
+# Resize all the images of a directory to 1/ratio of the original size and append "DS"(downscaled) to the filenames.
+def resize_folder(folder_path, ratio=3.5):
+    img_dir = folder_path
+    img_list = os.listdir(img_dir)
+
+    for img_path in img_list:
+        print(img_path)
+        img = cv2.imread(img_dir + img_path, cv2.IMREAD_UNCHANGED)
+        width = int(img.shape[1] / ratio)
+        height = int(img.shape[0] / ratio)
+        dim = (width, height)
+        img = cv2.resize(img, dim, interpolation=cv2.INTER_CUBIC)
+        cv2.imwrite(img_dir + img_path[:-4] + "DS.png", img)

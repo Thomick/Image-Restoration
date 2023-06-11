@@ -1,3 +1,5 @@
+# Parse training parameters from YAML file
+
 import yaml
 
 DEFAULT_PARAMS = {

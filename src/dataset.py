@@ -1,3 +1,5 @@
+# This file contains the dataset classes used for training and testing.
+
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
 import torch
@@ -214,7 +216,7 @@ class GenericDataModule(LightningDataModule):
             )
         else:
             raise Exception("Invalid phase")
-        print("Train dataset size : ", len(self.train_dataset))
+        print("Dataset size : ", len(self.train_dataset))
 
     def train_dataloader(self):
         return DataLoader(
