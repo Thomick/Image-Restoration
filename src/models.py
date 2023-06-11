@@ -526,7 +526,6 @@ class Mapping(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         self.curr_device = batch[0].device
-        # TODO : Implement validation step for the full model
         pass
 
     def on_validation_end(self) -> None:

@@ -391,7 +391,6 @@ class Discriminator(nn.Module):
 
 
 # VGG19 network for perceptual loss
-# TODO : Find reference for this implementation of perceptual loss
 class VGG19_torch(torch.nn.Module):
     def __init__(self, requires_grad=False):
         super(VGG19_torch, self).__init__()
