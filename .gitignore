@@ -1,3 +1,6 @@
+.*
+!/.gitignore
+
 datasets/*
 lightning_logs/*
 *.pyc

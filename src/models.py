@@ -20,24 +20,25 @@ from utils import save_image, psnr, lpips
 # Input: Noisy images (real and synthetic)
 # Output: Reconstructed noisy images
 class VAE1(pl.LightningModule):
-    def __init__(self, params):
+    def __init__(self, params, inference_mode=False):
         super().__init__()
         self.vae = VAENetwork(
             use_transpose_conv=params["use_transpose_conv"],
             interp_mode=params["interp_mode"],
             upsampling_kernel_size=params["upsampling_kernel_size"],
         )
-        self.discriminator = MultiScaleDiscriminator(
-            n_scales=2, n_layers=4, in_channels=3
-        )
-        self.discriminator_latent = MultiScaleDiscriminator(
-            n_scales=1, n_layers=3, in_channels=64
-        )
-        self.params = params
-        self.curr_device = None
-        self.loss_vgg = VGGLoss()
-        self.loss_gan = GANLoss()
-        self.loss_feat_gan = DiscriminatorFeatureLoss()
+        if not inference_mode:
+            self.discriminator = MultiScaleDiscriminator(
+                n_scales=2, n_layers=4, in_channels=3
+            )
+            self.discriminator_latent = MultiScaleDiscriminator(
+                n_scales=1, n_layers=3, in_channels=64
+            )
+            self.params = params
+            self.curr_device = None
+            self.loss_vgg = VGGLoss()
+            self.loss_gan = GANLoss()
+            self.loss_feat_gan = DiscriminatorFeatureLoss()
         self.save_hyperparameters()
 
     def forward(self, x):
@@ -52,7 +53,6 @@ class VAE1(pl.LightningModule):
 
         # train VAE1
         if optimizer_idx == 0:
-
             pred_disc_real = self.discriminator(input_img)
             pred_disc_fake = self.discriminator(reconst_img)
             loss_g_gan = self.loss_gan(pred_disc_fake, target_is_real=True)
@@ -96,7 +96,6 @@ class VAE1(pl.LightningModule):
 
         # train discriminator
         if optimizer_idx == 1:
-
             real_loss = self.loss_gan(
                 self.discriminator(input_img), target_is_real=True
             )
@@ -111,7 +110,6 @@ class VAE1(pl.LightningModule):
 
         # train discriminator for the latent space
         if optimizer_idx == 2:
-
             d_latent_loss = self.loss_gan(self.discriminator_latent(latent), label)
 
             self.log(
@@ -222,21 +220,22 @@ class VAE1(pl.LightningModule):
 # Input: Clean image
 # Output: Reconstructed clean image
 class VAE2(pl.LightningModule):
-    def __init__(self, params):
+    def __init__(self, params, inference_mode=False):
         super().__init__()
         self.vae = VAENetwork(
             use_transpose_conv=params["use_transpose_conv"],
             interp_mode=params["interp_mode"],
             upsampling_kernel_size=params["upsampling_kernel_size"],
         )
-        self.discriminator = MultiScaleDiscriminator(
-            n_scales=2, n_layers=4, in_channels=3
-        )
-        self.params = params
-        self.curr_device = None
-        self.loss_vgg = VGGLoss()
-        self.loss_gan = GANLoss()
-        self.loss_feat_gan = DiscriminatorFeatureLoss()
+        if not inference_mode:
+            self.discriminator = MultiScaleDiscriminator(
+                n_scales=2, n_layers=4, in_channels=3
+            )
+            self.params = params
+            self.curr_device = None
+            self.loss_vgg = VGGLoss()
+            self.loss_gan = GANLoss()
+            self.loss_feat_gan = DiscriminatorFeatureLoss()
         self.save_hyperparameters()
 
     def forward(self, x):
@@ -250,7 +249,6 @@ class VAE2(pl.LightningModule):
 
         # train VAE2
         if optimizer_idx == 0:
-
             pred_disc_real = self.discriminator(real_img)
             pred_disc_fake = self.discriminator(reconst_img)
             loss_g_gan = self.loss_gan(pred_disc_fake, target_is_real=True)
@@ -396,14 +394,14 @@ class Mapping(pl.LightningModule):
         self, params, vae1_ckpt_path=None, vae2_ckpt_path=None, inference_mode=False
     ):
         super().__init__()
-        if vae1_ckpt_path is None:
-            self.vae1_encoder = VAE1(params).vae.encoder
+        if vae1_ckpt_path is None or inference_mode:
+            self.vae1_encoder = VAE1(params, inference_mode=inference_mode).vae.encoder
         else:
             self.vae1_encoder = VAE1.load_from_checkpoint(
                 vae1_ckpt_path, params=params
             ).vae.encoder
-        if vae2_ckpt_path is None:
-            self.vae2 = VAE2(params).vae
+        if vae2_ckpt_path is None or inference_mode:
+            self.vae2 = VAE2(params, inference_mode=inference_mode).vae
         else:
             self.vae2 = VAE2.load_from_checkpoint(vae2_ckpt_path, params=params).vae
         self.mapping = MappingNetwork()
@@ -479,7 +477,6 @@ class Mapping(pl.LightningModule):
 
         # train discriminator to distinguish real and reconstructed images (1=real, 0=recoonstructed)
         if optimizer_idx == 1:
-
             denoised, _, _ = self(noisy_img)
             restored = self.vae2.decode(self.vae2.encode(clean_img))
 

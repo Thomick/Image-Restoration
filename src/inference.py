@@ -34,7 +34,9 @@ def inference(input_folder, output_folder, fullmodel_path):
         ).to(device)
 
         for img_path in img_list:
-            img = rescale_colors(io.read_image(input_folder + img_path).float())
+            img = rescale_colors(
+                io.read_image(os.path.join(input_folder, img_path)).float()
+            )
             if img.shape[0] == 4:
                 img = img[(0, 1, 2), :, :].unsqueeze(0).to(device)
             else:
@@ -68,6 +70,7 @@ def parse_args():
         help="path to save the output folder.",
     )
     parser.add_argument(
+        "-m",
         "--model-path",
         required=True,
         help="path to the model checkpoint.",

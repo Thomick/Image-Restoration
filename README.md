@@ -32,9 +32,9 @@ pip install -r requirements.txt
 ### Training
 The model consists in three modules that must be trained separately (VAE1, VAE2 and Mapping). VAE1 and VAE2 can be trained independently, but the mapping requires trained VAE1 and VAE2. The training of the mapping outputs the full model which can then be used for inference. The training of each module is done by running the `train.py` script with the corresponding configuration file (see ```train.py --help```). Here is an example of command for each module:
 ```
-python train.py --cfg-path configs/vae.yaml --stage vae1 --output-path checkpoints/vae1.ckpt
-python train.py --cfg-path configs/vae.yaml --stage vae2 --output-path checkpoints/vae2.ckpt
-python train.py --cfg-path configs/mapping.yaml --stage mapping --output-path checkpoints/full.ckpt
+python src/train.py --cfg-path configs/vae.yaml --stage vae1 --output-path checkpoints/vae1.ckpt
+python src/train.py --cfg-path configs/vae.yaml --stage vae2 --output-path checkpoints/vae2.ckpt
+python src/train.py --cfg-path configs/mapping.yaml --stage mapping --output-path checkpoints/full.ckpt
 ```
 The training can be tracked using tensorboard:
 ```
@@ -44,5 +44,7 @@ tensorboard --logdir lightning_logs
 ### Inference
 Given a trained model, the inference can be performed on a folder of images using the `inference.py` script. The script takes as input a folder containing the images to denoise, a folder to save the denoised images and the path to the full model:
 ```
-python inference.py -i <input_folder> -o <output_folder> -m <fullmodel_path>
+python src/inference.py -i <input_folder> -o <output_folder> -m <fullmodel_path>
 ```
+
+Please note that the model is not optimized for handling large images. Running inference on large images may result in out of memory errors.
