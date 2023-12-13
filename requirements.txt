@@ -4,7 +4,7 @@ Pillow==9.2.0
 torchmetrics==0.11.4
 pytorch-lightning==1.7.7
 scipy==1.9.3
-torch==1.12.1
+torch==1.13.1
 torchvision==0.13.1
 tqdm==4.64.1
 opencv-python==4.8.0.74
